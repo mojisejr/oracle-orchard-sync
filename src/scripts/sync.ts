@@ -64,8 +64,8 @@ async function main() {
   }
 
   for (const [plotName, plotLogs] of Object.entries(logsByPlot)) {
-    // Sanitize plot name for filename
-    const safePlotName = plotName.replace(/[^a-z0-9]/gi, '-').toLowerCase();
+    // Sanitize plot name for filename (Keep Thai characters, replace spaces and risky chars)
+    const safePlotName = plotName.replace(/[/\s?%*:|"<>]/g, '-').toLowerCase();
     const filename = `${dateString}_${safePlotName}.md`;
     const filePath = path.join(FARMING_LOGS_DIR, filename);
 
