@@ -7,6 +7,10 @@
     "lib": "lib"
   },
   "scripts": {
+    "sync": "ts-node src/scripts/sync.ts",
+    "remind": "ts-node src/scripts/remind.ts",
+    "add": "ts-node src/scripts/add.ts",
+    "build": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -15,5 +19,10 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.90.1",
     "dotenv": "^17.2.3"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.9",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
   }
 }
