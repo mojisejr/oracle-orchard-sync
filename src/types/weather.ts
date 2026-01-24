@@ -35,3 +35,26 @@ export interface TmdHourlyResponse {
     }>;
   }>;
 }
+
+// Phase 1 Schema: Daily Forecast Row
+export interface DailyForecast {
+  id?: string;
+  forecast_date: string; // YYYY-MM-DD
+  location_id: string;
+  swdown: number;
+  tc_max: number;
+  tc_min: number;
+  rh_percent: number;
+  rain_mm: number;
+  fetched_at?: string;
+}
+
+// Phase 2 Schema: Insight Row
+export interface WeatherInsight {
+  location_id: string;
+  target_date: string;
+  category: 'irrigation' | 'disease' | 'physiology';
+  status_level: 'critical' | 'warning' | 'optimal' | 'info';
+  message: string;
+  trigger_data: any;
+}

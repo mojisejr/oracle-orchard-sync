@@ -4,7 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 // Define the path to the farming logs directory
-const FARMING_LOGS_DIR = path.resolve(__dirname, '../../../../ψ/memory/logs/orchard/farming');
+const FARMING_LOGS_DIR = path.resolve(__dirname, '../../../../ψ/memory/logs/farming');
 const SUMMARY_FILE = path.join(FARMING_LOGS_DIR, 'outstanding-tasks.md');
 
 async function main() {

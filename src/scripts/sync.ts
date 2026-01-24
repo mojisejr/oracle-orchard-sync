@@ -7,8 +7,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 // Define the path to the farming logs directory
-// Going up from src/scripts -> projects/orchard-sync -> projects -> root -> ψ/memory/logs/orchard/farming/
-const FARMING_LOGS_DIR = path.resolve(__dirname, '../../../../ψ/memory/logs/orchard/farming');
+// Going up from src/scripts -> projects/orchard-sync -> projects -> root -> ψ/memory/logs/farming/
+const FARMING_LOGS_DIR = path.resolve(__dirname, '../../../../ψ/memory/logs/farming');
 
 async function main() {
   console.log('🍎 Starting Orchard Sync...');
