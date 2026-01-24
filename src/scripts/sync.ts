@@ -1,5 +1,8 @@
 import { supabase } from '../lib/supabase';
 import { ActivityLog } from '../types/database';
+import { WeatherService } from '../lib/weather';
+import { resolvePlotLocation } from '../lib/plot-mapper';
+import { WeatherStamp } from '../types/weather';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -9,6 +12,9 @@ const FARMING_LOGS_DIR = path.resolve(__dirname, '../../../../ψ/memory/logs/orc
 
 async function main() {
   console.log('🍎 Starting Orchard Sync...');
+
+  // Initialize Weather Service
+  const weatherService = new WeatherService();
 
   // 1. Determine "Today" (Local Time - GMT+7 awareness)
   // We want to fetch logs created "today" relative to the user's local time.
@@ -69,7 +75,18 @@ async function main() {
     const filename = `${dateString}_${safePlotName}.md`;
     const filePath = path.join(FARMING_LOGS_DIR, filename);
 
-    const fileContent = generateMarkdown(dateString, plotName, plotLogs);
+    // Weather Integration
+    const location = resolvePlotLocation(plotName);
+    console.log(`🌤️ Fetching weather for ${plotName} (Lat: ${location.lat}, Lon: ${location.lon})...`);
+    
+    let weatherStamps: WeatherStamp[] = [];
+    try {
+      weatherStamps = await weatherService.getHourlyForecast(location.lat, location.lon);
+    } catch (e) {
+      console.warn(`⚠️ Could not fetch weather for ${plotName}`);
+    }
+
+    const fileContent = generateMarkdown(dateString, plotName, plotLogs, weatherService, weatherStamps, location.name_th);
 
     // Write file (Synchronous for safety)
     try {
@@ -81,16 +98,47 @@ async function main() {
       // If we run this script multiple times a day, "Append" might duplicate entries if we aren't careful.
       // Strategy: Re-generate the *entire day's* log based on DB state. This is cleaner and idempotent.
       fs.writeFileSync(filePath, fileContent, 'utf8');
-      console.log(`📝 Wrote log: ${filename}`);
+      console.log(`📝 Updated log: ${filePath}`);
+
+      // --- PHASE 1: TERMINAL VISIBILITY ---
+      // Show Summary Table for this Plot
+      const currentStamp = weatherStamps.length > 0 ? weatherService.findClosestStamp(weatherStamps, new Date())?.stamp : null;
+      const startIndex = currentStamp ? weatherStamps.indexOf(currentStamp) : 0;
+      const advices = weatherService.generateAdvice(weatherStamps, startIndex);
+
+      if (currentStamp) {
+        // Filter important advices for terminal (Danger/Warning) or show all
+        const criticalAdvice = advices
+          .filter(a => a.status !== 'safe')
+          .map(a => `[${a.status.toUpperCase()}] ${a.message}`)
+          .join(' | ');
+
+        console.log(`\n📊 Status Report: ${location.name_th} (${plotName})`);
+        console.table([{
+          Temp: `${currentStamp.temp_c}°C`,
+          Humidity: `${currentStamp.humidity_percent}%`,
+          Rain4h: `${advices.find(a => a.condition.includes('พ่นยา'))?.message || '-'}`,
+          OracleAdvice: criticalAdvice || '✅ Normal (No Alerts)'
+        }]);
+        console.log('---------------------------------------------------');
+      }
+
     } catch (err) {
-      console.error(`❌ Failed to write file ${filename}:`, err);
+      console.error(`❌ Failed to write file for ${plotName}:`, err);
     }
   }
 
-  console.log('✨ Sync complete.');
+  console.log('✨ Sync Completed.');
 }
 
-function generateMarkdown(date: string, plotName: string, logs: ActivityLog[]): string {
+function generateMarkdown(
+  date: string, 
+  plotName: string, 
+  logs: ActivityLog[],
+  weatherService: WeatherService,
+  weatherStamps: WeatherStamp[],
+  locationName: string
+): string {
   // Group details by activity type for better readability
   const groupedLogs: Record<string, ActivityLog[]> = {};
   logs.forEach(log => {
@@ -119,6 +167,24 @@ function generateMarkdown(date: string, plotName: string, logs: ActivityLog[]): 
       
       if (log.tree_id) {
         md += `  - *Tree*: \`${log.tree_id}\`\n`;
+
+      // Weather Stamp Integration
+      if (weatherStamps.length > 0) {
+        const logDate = new Date(log.created_at);
+        const match = weatherService.findClosestStamp(weatherStamps, logDate);
+        
+        if (match) {
+          const advice = weatherService.generateAdvice(weatherStamps, match.index);
+          const upcoming = weatherStamps.slice(match.index, match.index + 4);
+          const rainNext4h = upcoming.reduce((sum, s) => sum + s.rain_mm, 0);
+          
+          const stampMd = weatherService.formatMarkdown(locationName, match.stamp, advice, rainNext4h);
+          
+          // Use <details> to keep logs clean
+          md += `\n  <details><summary>🌦️ Weather & Oracle Advice</summary>\n\n${stampMd.replace(/^/gm, '    ')}\n  </details>\n`;
+        }
+      }
+
       }
       
       if (log.next_action) {
