@@ -1,10 +1,11 @@
 
 import { supabase } from '../lib/supabase';
 import { analyzeIrrigation, analyzeDisease, analyzePhysiology, analyzePest } from '../lib/conditions';
+import { resolvePlotProfile } from '../lib/plot-mapper';
 import { DailyForecast, WeatherInsight } from '../types/weather';
 
 async function runSynthesis() {
-  console.log('🧠 Starting Orchard Intelligence Synthesis...');
+  console.log('🧠 Starting Orchard Intelligence Synthesis (Physical Truth Aware)...');
 
   // 1. Fetch Forecasts for next 7 days
   const today = new Date().toISOString().split('T')[0];
@@ -29,17 +30,10 @@ async function runSynthesis() {
   console.log(`📊 Processing ${forecasts.length} forecast records from ${today} onwards...`);
   
   // 2. De-dupe: Keep only the latest fetched data for each Location + Date
-  // (In case multiple fetches happened)
   const uniqueMap = new Map<string, DailyForecast>();
-  
-  // Sort by fetched_at ascending, so latest overwrites previous
-  // But we didn't sort by fetched_at in SQL. Let's sort locally or assume db constraints help.
-  // We'll trust the 'latest' one usually comes last or just process what we have.
-  // Actually, better to just process.
   
   for (const row of forecasts) {
       const key = `${row.location_id}_${row.forecast_date}`;
-      // In a real app, we might compare fetched_at timestamps here.
       uniqueMap.set(key, row as DailyForecast);
   }
 
@@ -47,24 +41,30 @@ async function runSynthesis() {
   const insights: WeatherInsight[] = [];
 
   for (const forecast of uniqueMap.values()) {
-    // Irrigation
-    const irrigation = analyzeIrrigation(forecast);
+    // RESOLVE PHYSICAL TRUTH
+    // We get the plot context (Stage, Soil, Water) based on the location slug
+    // e.g. 'tm1' -> { stage: 'bloom', soil: 'sandy', ... }
+    const context = resolvePlotProfile(forecast.location_id);
+
+    // Irrigation (Needs Soil & Bloom context)
+    const irrigation = analyzeIrrigation(forecast, context);
     if (irrigation) insights.push(irrigation);
 
-    // Disease
-    const disease = analyzeDisease(forecast);
+    // Disease (Needs Humidity context, maybe generic)
+    // Note: analyzeDisease signature updated to accept context (for Pest logic fallback or future extensions)
+    const disease = analyzeDisease(forecast, context);
     if (disease) insights.push(disease);
 
-    // Physiology
-    const physio = analyzePhysiology(forecast);
+    // Physiology (Needs Bloom context to prevent induction/burning)
+    const physio = analyzePhysiology(forecast, context);
     if (physio) insights.push(physio);
 
-    // Pest
-    const pest = analyzePest(forecast);
+    // Pest (Needs Bloom context for Thrips)
+    const pest = analyzePest(forecast, context);
     if (pest) insights.push(pest);
   }
 
-  // 4. Report Results to Console (for Agent to read)
+  // 4. Report Results to Console
   console.log('\n=============================================');
   console.log('🦁 ORCHARD SAGE INSIGHTS REPORT');
   console.log('=============================================');
