@@ -19,17 +19,17 @@ const DEFAULT_LOCATION: PlotLocation = {
 export const PLOT_LOCATIONS: Record<string, PlotLocation> = {
   'house': DEFAULT_LOCATION,
   
-  // TODO: Update coordinates for Tamarind Plot
+  // Plot: Tamarind (สวนมะขาม)
   'tamarind': {
-    lat: 12.552967, // Using House as placeholder
-    lon: 102.155557,
+    lat: 12.658602,
+    lon: 102.204633,
     name_th: 'สวนมะขาม'
   },
   
-  // TODO: Update coordinates for Lower Plot
+  // Plot: Lower Plot (สวนล่าง)
   'lower': {
-    lat: 12.552967, // Using House as placeholder
-    lon: 102.155557,
+    lat: 12.546194,
+    lon: 102.140010,
     name_th: 'สวนล่าง'
   },
   

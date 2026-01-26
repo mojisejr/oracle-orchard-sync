@@ -1,4 +1,5 @@
 import { parseArgs } from 'node:util';
+import { execSync } from 'node:child_process';
 import { supabase } from '../lib/supabase';
 import { ActivityType } from '../types/database';
 import { WeatherService } from '../lib/weather';
@@ -18,6 +19,10 @@ async function main() {
       notes: {
         type: 'string',
         short: 'n',
+      },
+      date: {
+        type: 'string',
+        short: 'd',
       },
       'next-action': {
         type: 'string',
@@ -55,10 +60,15 @@ async function main() {
     notes: notes,
   };
 
+  if (values.date) {
+    insertData.created_at = new Date(values.date).toISOString();
+  }
+
   // Handle Next Action
   if (values['next-action']) {
     const days = parseInt(values['next-days'] || '7', 10);
-    const reminderDate = new Date();
+    const referenceDate = values.date ? new Date(values.date) : new Date();
+    const reminderDate = new Date(referenceDate);
     reminderDate.setDate(reminderDate.getDate() + days);
 
     insertData.next_action = {
@@ -86,6 +96,15 @@ async function main() {
   console.log(`✅ Success! Log ID: ${data.id}`);
   // Output JSON for AI Parsing
   console.log(JSON.stringify(data));
+
+  // --- AUTOMATION HOOK: SYNC ON WRITE ---
+  try {
+    const syncDate = values.date || new Date().toLocaleDateString('en-CA');
+    console.log(`\n🔄 Auto-syncing logs for ${syncDate} (${plotName})...`);
+    execSync(`npm run sync -- --date ${syncDate} --plot ${plotName}`, { stdio: 'inherit' });
+  } catch (e) {
+    console.warn('⚠️ Auto-sync failed, but log was saved to DB.');
+  }
 
   // --- PHASE 1: CONTEXTUAL EVIDENCE ---
   try {

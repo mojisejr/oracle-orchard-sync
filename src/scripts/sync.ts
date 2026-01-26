@@ -1,3 +1,4 @@
+import { parseArgs } from 'node:util';
 import { supabase } from '../lib/supabase';
 import { ActivityLog } from '../types/database';
 import { WeatherService } from '../lib/weather';
@@ -11,15 +12,21 @@ import * as path from 'path';
 const FARMING_LOGS_DIR = path.resolve(__dirname, '../../../../ψ/memory/logs/farming');
 
 async function main() {
+  const { values } = parseArgs({
+    options: {
+      plot: { type: 'string', short: 'p' },
+      date: { type: 'string', short: 'd' },
+    },
+  });
+
   console.log('🍎 Starting Orchard Sync...');
 
   // Initialize Weather Service
   const weatherService = new WeatherService();
 
-  // 1. Determine "Today" (Local Time - GMT+7 awareness)
-  // We want to fetch logs created "today" relative to the user's local time.
+  // 1. Determine "Target Date" (Local Time - GMT+7 awareness)
   const now = new Date();
-  const dateString = now.toLocaleDateString('en-CA'); // YYYY-MM-DD
+  const dateString = values.date || now.toLocaleDateString('en-CA'); // YYYY-MM-DD
   
   const startOfDay = new Date(dateString + 'T00:00:00+07:00').toISOString();
   const endOfDay = new Date(dateString + 'T23:59:59+07:00').toISOString();
@@ -28,12 +35,17 @@ async function main() {
   console.log(`   Time range: ${startOfDay} - ${endOfDay}`);
 
   // 2. Fetch data from Supabase
-  const { data: logs, error } = await supabase
+  let query = supabase
     .from('activity_logs')
     .select('*')
     .gte('created_at', startOfDay)
-    .lte('created_at', endOfDay)
-    .order('created_at', { ascending: true });
+    .lte('created_at', endOfDay);
+  
+  if (values.plot) {
+    query = query.eq('plot_name', values.plot);
+  }
+
+  const { data: logs, error } = await query.order('created_at', { ascending: true });
 
   if (error) {
     console.error('❌ Error fetching logs:', error.message);
