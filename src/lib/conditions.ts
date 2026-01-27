@@ -12,39 +12,45 @@ import { PlotProfile } from './plot-mapper';
 export function analyzeIrrigation(day: DailyForecast, context?: PlotProfile): WeatherInsight | null {
   const { rh_percent: rh, tc_max: temp, swdown, rain_mm: rain, forecast_date, location_id } = day;
   
-  // -- AWARENESS: Soil Weighting --
-  // If Sandy, we are more sensitive to dry air.
+  // -- AWARENESS: Soil & Personality --
   const isSandy = context?.soil === 'sandy';
-  const rhThreshold = isSandy ? 60 : 50; // Critical RH threshold bumps up for Sandy soil
+  const sensitivity = context?.personality?.sensitivity_drought || 5; 
   
-  // Condition 1: High Transpiration (Dry/Windy)
+  // Base Threshold
+  let rhThreshold = isSandy ? 60 : 50; 
+  if (sensitivity > 8) rhThreshold += 5; // Extra buffer for sensitive plots (e.g., Ban/Makham)
+
+  // Condition 1: High Transpiration (Dry/Windy logic placeholder)
   if (rh < rhThreshold) {
-    const severity = (isSandy && rh < 50) ? 'critical' : 'warning';
-    const sandyNote = isSandy ? ' (ดินทรายแห้งไวมาก!)' : '';
+    const isCritical = (isSandy && rh < 50) || (sensitivity > 8 && rh < 55);
+    const severity = isCritical ? 'critical' : 'warning';
+    
+    // Custom messages
+    let msg = `💧 **เพิ่มน้ำด่วน!** (RH ${rh}% < ${rhThreshold}%)`;
+    if (isSandy) msg += ' ดินทรายแห้งไวมาก!';
+    if (sensitivity > 8) msg += ` พืชแปลงนี้ไวต่อการขาดน้ำ (${context?.personality?.critical_asset})`;
 
     return {
       location_id,
       target_date: forecast_date,
       category: 'irrigation',
       status_level: severity, 
-      message: `💧 **เพิ่มน้ำด่วน!** (RH ${rh}% < ${rhThreshold}%)${sandyNote} อากาศแห้ง${isSandy ? 'และดินไม่อุ้มน้ำ' : ''} ระวังใบไหม้/ดอกฝ่อ`,
-      trigger_data: { rh, condition: 'High Transpiration', soil: context?.soil }
+      message: msg,
+      trigger_data: { rh, condition: 'High Transpiration', soil: context?.soil, sensitivity }
     };
   }
 
   // Condition 2: Extreme Heat (Heat Stress)
   if (temp > 35 && swdown > 600) {
-    // -- AWARENESS: Stage Check --
-    // If Bloom, we cannot let the flower burn
     const isBloom = context?.stage === 'bloom';
-    const bloomWarning = isBloom ? ' [ระยะดอกบาน: ห้ามปล่อยให้ขาดน้ำ]' : '';
-
+    const isSensitive = sensitivity > 7;
+    
     return {
       location_id,
       target_date: forecast_date,
       category: 'irrigation',
-      status_level: isBloom ? 'critical' : 'warning',
-      message: `☀️ **ให้น้ำลดอุณหภูมิ** (T_max ${temp}°C) แดดเปรี้ยงมาก${bloomWarning} พ่นฝอยช่วงบ่ายสั้นๆ ลดเครียด`,
+      status_level: (isBloom || isSensitive) ? 'critical' : 'warning',
+      message: `☀️ **ให้น้ำลดอุณหภูมิ** (T_max ${temp}°C) แดดเปรี้ยงมาก${isBloom ? ' [ระยะดอกบาน]' : ''} พ่นฝอยช่วงบ่ายสั้นๆ ลดเครียด`,
       trigger_data: { temp, swdown, condition: 'Heat Stress', stage: context?.stage }
     };
   }
@@ -162,16 +168,21 @@ export function analyzeWaterCompatibility(context?: PlotProfile): WeatherInsight
  */
 export function analyzeDisease(day: DailyForecast, context?: PlotProfile): WeatherInsight | null {
   const { rh_percent: rh, rain_mm: rain, forecast_date, location_id } = day;
+  const isDurian = context?.personality?.critical_asset === 'durian';
+  const floodSensitivity = context?.personality?.sensitivity_flood || 5;
 
   // Condition 1: Phytophthora Warning
   if (rain > 10 && rh > 80) {
+    // Durian is super sensitive
+    const isCritical = isDurian || floodSensitivity > 7;
+    
     return {
       location_id,
       target_date: forecast_date,
       category: 'disease',
-      status_level: 'critical',
-      message: `🍄 **ความเสี่ยงราสูง (วิกฤต)** (ฝน ${rain}mm / ชื้น ${rh}%) ตรวจโคนต้น/กิ่ง ถ้ามีกลิ่นเหม็นเปรี้ยวใช้ยา Tier S (Cymoxanil)`,
-      trigger_data: { rain, rh, condition: 'Phytophthora Risk' }
+      status_level: isCritical ? 'critical' : 'warning',
+      message: `🍄 **ความเสี่ยงราสูง (${isDurian ? 'ทุเรียน' : 'ทั่วไป'})** (ฝน ${rain}mm / ชื้น ${rh}%) ตรวจโคนต้น/กิ่ง ถ้ามีกลิ่นเหม็นเปรี้ยวใช้ยา Tier S (Cymoxanil)${isDurian ? ' [ทุเรียนอ่อนแอมาก!]' : ''}`,
+      trigger_data: { rain, rh, condition: 'Phytophthora Risk', asset: context?.personality?.critical_asset }
     };
   }
 

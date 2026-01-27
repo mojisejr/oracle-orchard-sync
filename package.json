@@ -11,6 +11,7 @@
     "remind": "ts-node src/scripts/remind.ts",
     "add": "ts-node src/scripts/add.ts",
     "synthesize": "ts-node src/scripts/synthesize-insights.ts",
+    "trend": "ts-node src/scripts/check-trend.ts",
     "build": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
