@@ -92,12 +92,13 @@ async function checkWeatherTrend() {
     const sortedDates = Object.keys(pivotData).sort().slice(0, 10); // Next 10 days
     const sortedLocations = Array.from(allLocations).sort();
 
+    // Data structure for Trend Analysis
+    const trendHistory: Record<string, { max: number, rh: number, emoji: string }[]> = {};
+    sortedLocations.forEach(loc => trendHistory[loc] = []);
+
     const tableData = sortedDates.map(date => {
         const row: any = { Date: date };
         
-        // Check Trend Logic (Simple)
-        let dailyRiskCount = 0;
-
         sortedLocations.forEach(loc => {
             const d = pivotData[date][loc];
             if (d) {
@@ -106,20 +107,74 @@ async function checkWeatherTrend() {
                 const profile = profileKey ? PLOT_PROFILES[ID_TO_PROFILE_KEY[profileKey]] : undefined;
 
                 const emoji = getStatusEmoji(d.max, d.rh, profile);
-                if (emoji !== '🟢') dailyRiskCount++;
-
-                row[loc] = `${emoji} ${Math.round(d.max)}°C`;
+                row[loc] = `${emoji} ${Math.round(d.max)}°C (RH:${Math.round(d.rh)}%)`;
+                
+                // Collect for Analysis
+                trendHistory[loc].push({ max: d.max, rh: d.rh, emoji });
             } else {
                 row[loc] = '-';
             }
         });
 
-        // Add Summary Column?
-        // row['Trend'] = dailyRiskCount > 0 ? `${dailyRiskCount} Risks` : 'Normal';
         return row;
     });
 
     console.table(tableData);
+
+    // --- Phase 3: Intelligence Injection (Nudges) ---
+    console.log('\n--- 🧠 Orchard Sage Nudges ---');
+    const nudges: string[] = [];
+
+    // 1. Suan Makham (Sandy Soil) - Heat Accumulation Warning
+    // Logic: If '🟡' or '🔴' for 2 consecutive days
+    const makhamData = trendHistory['Suan Makham'];
+    if (makhamData) {
+        let consecutiveRisk = 0;
+        makhamData.forEach(day => {
+            if (day.emoji === '🟡' || day.emoji === '🔴') consecutiveRisk++;
+            else consecutiveRisk = 0;
+        });
+        
+        if (consecutiveRisk >= 2) {
+            nudges.push(`⚠️  **Suan Makham**: ดินทรายอมความร้อนสะสม ${consecutiveRisk} วันแล้ว ระวังรากแห้งตาย (Drought Risk)`);
+        }
+    }
+
+    // 2. Suan Ban (Nursery) - Water Loss Warning
+    // Logic: If RH < 50% for 3 consecutive days
+    const banData = trendHistory['Suan Ban'];
+    if (banData) {
+        let consecutiveDry = 0;
+        banData.forEach(day => {
+            if (day.rh < 55) consecutiveDry++;
+            else consecutiveDry = 0;
+        });
+
+        if (consecutiveDry >= 3) {
+            nudges.push(`💧 **Suan Ban**: ความชื้นต่ำต่อเนื่อง ${consecutiveDry} วัน (RH < 55%) ไม้อนุบาลอาจเสียน้ำจนชะงัก`);
+        }
+    }
+
+    // 3. Suan Lang (Clayey) - Flood/Rot Risk (Opposite check)
+    // Logic: If RH > 90% for 3 days
+    const langData = trendHistory['Suan Lang'];
+    if (langData) {
+        let consecutiveWet = 0;
+        langData.forEach(day => {
+            if (day.rh > 90) consecutiveWet++;
+            else consecutiveWet = 0;
+        });
+        
+        if (consecutiveWet >= 3) {
+            nudges.push(`🍄 **Suan Lang**: ความชื้นสูงสะสม ${consecutiveWet} วัน ระวังเชื้อราในมังคุด`);
+        }
+    }
+
+    if (nudges.length > 0) {
+        nudges.forEach(n => console.log(n));
+    } else {
+        console.log('✅ No critical trends detected. Keep monitoring.');
+    }
 }
 
 checkWeatherTrend();
