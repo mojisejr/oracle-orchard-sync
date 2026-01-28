@@ -112,36 +112,50 @@ export function resolvePlotLocation(inputName: string): PlotLocation {
   }
 }
 
-export function resolvePlotProfile(inputName: string): PlotProfile {
-  // 1. Exact Match (Slug)
-  if (PLOT_PROFILES[inputName]) {
-    return PLOT_PROFILES[inputName];
-  }
-
-  // 2. Keyword Matching (Thai/English)
+/**
+ * Standardize Plot ID
+ * "The Code Intelligence" - Maps fuzzy inputs to Standard Slug IDs
+ * Returns null if no match found (Strict Mode)
+ */
+export function resolvePlotId(inputName: string): string | null {
   const normalized = inputName.toLowerCase().trim();
 
+  // 1. Exact Match (Slug)
+  if (PLOT_PROFILES[normalized]) {
+    return normalized;
+  }
+
+  // 2. Keyword Matching (Thai/English) - Ordered by specificity
   // House / Suan Ban
   if (normalized.includes('บ้าน') || normalized.includes('house') || normalized.includes('ban')) {
-    return PLOT_PROFILES['house'];
+    return 'house';
   }
 
   // Tamarind / Suan Makham
   if (normalized.includes('มะขาม') || normalized.includes('tamarind') || normalized.includes('makham')) {
-    return PLOT_PROFILES['tamarind'];
+    return 'tamarind';
   }
 
   // Lower / Suan Lang
   if (normalized.includes('ล่าง') || normalized.includes('lower') || normalized.includes('bottom') || normalized.includes('lang')) {
-    return PLOT_PROFILES['lower'];
+    return 'lower';
   }
 
   // Pram / Nursery
-  if (normalized.includes('พันธุ์ไม้') || normalized.includes('pram') || normalized.includes('nursery')) {
-    return PLOT_PROFILES['pram'];
+  if (normalized.includes('พันธุ์ไม้') || normalized.includes('pram') || normalized.includes('nursery') || normalized.includes('ปรัม')) {
+    return 'pram';
   }
 
-  // 3. Fallback
+  // 3. Fallback - Return null for strict validation
+  return null;
+}
+
+export function resolvePlotProfile(inputName: string): PlotProfile {
+  const id = resolvePlotId(inputName);
+  if (id && PLOT_PROFILES[id]) {
+    return PLOT_PROFILES[id];
+  }
+  
   console.warn(`⚠️ Plot Mapper: Unknown plot "${inputName}". Using default profile (House).`);
   return DEFAULT_PROFILE;
 }

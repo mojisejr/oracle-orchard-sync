@@ -3,7 +3,7 @@ import { execSync } from 'node:child_process';
 import { supabase } from '../lib/supabase';
 import { ActivityType } from '../types/database';
 import { WeatherService } from '../lib/weather';
-import { resolvePlotLocation } from '../lib/plot-mapper';
+import { resolvePlotLocation, resolvePlotId } from '../lib/plot-mapper';
 
 async function main() {
   const { values } = parseArgs({
@@ -48,7 +48,23 @@ async function main() {
   }
 
   const activityType = values.type as ActivityType;
-  const plotName = values.plot;
+  // Phase 2: Code Intelligence - Auto Map to Standard ID
+  const rawPlotName = values.plot;
+  const resolvedPlotId = resolvePlotId(rawPlotName);
+  
+  // Phase 4: Hard Gate - Strict Validation
+  if (!resolvedPlotId) {
+    console.error(`❌ Error: Unknown plot name "${rawPlotName}".`);
+    console.error(`Valid options: house, tamarind, lower, pram (or keys: บ้าน, มะขาม, ล่าง, พันธุ์ไม้)`);
+    process.exit(1);
+  }
+
+  const plotName = resolvedPlotId;
+  
+  if (plotName !== rawPlotName) {
+    console.log(`ℹ️  Identity Standardization: Mapped "${rawPlotName}" -> "${plotName}"`);
+  }
+
   const notes = values.notes || '';
   
   // Prepare Insert Data
