@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orchard Sight 🦁</title>
+    
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #e2e8f0; }
+        
+        /* MimiVibe Glassmorphism */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: transform 0.2s ease-in-out;
+        }
+
+        .glass-panel:hover {
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .chart-container-hero {
+            position: relative;
+            height: 450px;
+            width: 100%;
+        }
+
+        .chart-container-sm {
+            position: relative;
+            height: 250px;
+            width: 100%;
+        }
+
+        /* Utility */
+        .text-glow-emerald { text-shadow: 0 0 10px rgba(16, 185, 129, 0.3); }
+        .text-glow-amber { text-shadow: 0 0 10px rgba(245, 158, 11, 0.3); }
+        .text-glow-red { text-shadow: 0 0 10px rgba(239, 68, 68, 0.3); }
+    </style>
+</head>
+<body class="p-4 md:p-8 min-h-screen flex flex-col items-center bg-[url('https://images.unsplash.com/photo-1599940824399-b87987ced7bb?q=80&w=2632&auto=format&fit=crop')] bg-cover bg-fixed bg-center bg-no-repeat">
+    
+    <!-- Backdrop Overlay -->
+    <div class="fixed inset-0 bg-slate-900/90 z-[-1]"></div>
+
+    <!-- Header -->
+    <header class="w-full max-w-7xl mb-6 flex justify-between items-end border-b border-white/5 pb-4">
+        <div>
+            <h1 class="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-cyan-400">
+                Orchard Sight 🦁
+            </h1>
+            <p class="text-slate-400 text-sm mt-1 flex items-center gap-2">
+                <span id="timestamp-display">Loading...</span> • <span class="text-emerald-400">System Online</span>
+            </p>
+        </div>
+        <div class="text-right flex flex-col items-end">
+            <span class="inline-block px-3 py-1 text-xs rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 mb-2">
+                Phase 3: Unity Protocol
+            </span>
+            <div id="view-mode-badge" class="font-mono text-xs text-slate-500 uppercase tracking-widest">
+                STRATEGIC VIEW
+            </div>
+        </div>
+    </header>
+
+    <!-- HUD Banner (Head-up Display) -->
+    <section id="hud-banner" class="w-full max-w-7xl mb-8 grid grid-cols-2 md:grid-cols-4 gap-4">
+        <!-- Injected via Script -->
+        <div class="glass-panel p-4 flex flex-col items-center justify-center">
+            <span class="text-slate-400 text-xs uppercase tracking-wider">Loading HUD...</span>
+        </div>
+    </section>
+
+    <!-- Main Content Area -->
+    <main class="w-full max-w-7xl space-y-8">
+        
+        <!-- Hero Section (Dynamic Focus) -->
+        <section id="hero-section" class="glass-panel p-6 border-l-4 border-l-emerald-500 relative overflow-hidden">
+            <div class="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
+                <svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            </div>
+            
+            <div class="flex justify-between items-center mb-6 z-10 relative">
+                <div>
+                    <h2 class="text-2xl font-semibold text-slate-100 flex items-center gap-3">
+                        <span id="hero-title">Primary Intelligence</span>
+                        <span class="px-2 py-0.5 rounded text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/20">HERO</span>
+                    </h2>
+                    <p id="hero-desc" class="text-slate-400 text-sm">Most critical data based on current context.</p>
+                </div>
+            </div>
+            
+            <div class="chart-container-hero">
+                <canvas id="heroChart"></canvas>
+            </div>
+        </section>
+
+        <!-- Secondary Grid (Tactical Cards) -->
+        <div id="card-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Card Template (Will be cloned/generated) -->
+            <section class="glass-panel p-5 min-h-[200px] flex items-center justify-center text-slate-500">
+                Secondary Intelligence Grid (Waiting for Injection)
+            </section>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-12 mb-8 text-center text-slate-600 text-xs font-mono">
+        Generated by Oracle • Powered by Chart.js & MimiVibe UI • <span id="footer-version">v3.0.0</span>
+    </footer>
+
+    <!-- INJECTED DATA SCRIPT -->
+    <script>
+        // --- Oracle Data Injection Point ---
+        // This object will be replaced by the TS script runner (viz-render.ts)
+        const INJECTED_DATA = { 
+            meta: {
+                generatedAt: new Date().toISOString(),
+                viewMode: 'strategic',
+                version: '3.0.0-alpha'
+            },
+            hud: [
+                { label: 'Max Temp', value: '34°C', color: 'text-amber-400' },
+                { label: 'Min RH', value: '45%', color: 'text-red-400' },
+                { label: 'VPD Stress', value: '4 hrs', color: 'text-slate-200' },
+                { label: 'Rain Prob', value: '20%', color: 'text-emerald-400' },
+            ],
+            hero: {
+                type: 'line',
+                labels: ['06:00', '09:00', '12:00', '15:00', '18:00'],
+                datasets: [{
+                    label: 'Placeholder Data',
+                    data: [10, 20, 30, 25, 15],
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    fill: true
+                }]
+            }
+        }; 
+
+        // --- Render Logic (Client Side) ---
+        document.addEventListener('DOMContentLoaded', () => {
+            renderHeader();
+            renderHUD();
+            renderHero();
+        });
+
+        function renderHeader() {
+            document.getElementById('timestamp-display').innerText = new Date(INJECTED_DATA.meta.generatedAt).toLocaleString('th-TH');
+            document.getElementById('view-mode-badge').innerText = INJECTED_DATA.meta.viewMode + ' VIEW';
+        }
+
+        function renderHUD() {
+            const container = document.getElementById('hud-banner');
+            if (INJECTED_DATA.hud && INJECTED_DATA.hud.length > 0) {
+                container.innerHTML = INJECTED_DATA.hud.map(item => `
+                    <div class="glass-panel p-4 flex flex-col justify-center relative overflow-hidden group">
+                        <div class="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        <span class="text-slate-400 text-xs uppercase tracking-wider mb-1">${item.label}</span>
+                        <span class="text-2xl font-bold ${item.color}">${item.value}</span>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function renderHero() {
+            const ctx = document.getElementById('heroChart').getContext('2d');
+            const data = INJECTED_DATA.hero;
+
+            if (!data) return;
+
+            new Chart(ctx, {
+                type: data.type || 'line',
+                data: {
+                    labels: data.labels,
+                    datasets: data.datasets.map(ds => ({
+                        ...ds,
+                        pointBackgroundColor: '#1e293b',
+                        pointBorderWidth: 2,
+                        pointRadius: 4,
+                        borderWidth: 2,
+                        tension: 0.4
+                    }))
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: '#94a3b8' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#94a3b8' }
+                        }
+                    },
+                    plugins: {
+                        legend: { labels: { color: '#cbd5e1' } },
+                        annotation: {
+                            annotations: {
+                                // Dynamic annotations can be injected here too
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
