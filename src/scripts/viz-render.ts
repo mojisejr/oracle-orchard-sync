@@ -1,273 +1,50 @@
-import fs from 'fs';
-import path from 'path';
+
 import minimist from 'minimist';
+import { readFileSync, writeFileSync } from 'fs';
+import { resolve } from 'path';
 import { exec } from 'child_process';
+import { fetchPlotProfile } from '../lib/plot-service';
 
-// Args
-const args = minimist(process.argv.slice(2));
-const VIEW_MODE = args.view || 'strategic';
-const OPEN_BROWSER = args.open || false;
-// Allow manual focus override, otherwise rely on data
-const FOCUS_PLOT = args.focus ? String(args.focus) : undefined;
-
-// Paths
-const TEMPLATE_PATH = path.join(__dirname, '../templates/viz/dashboard.ejs');
-const OUTPUT_DIR = path.join(__dirname, '../../out');
-const OUTPUT_FILE = path.join(OUTPUT_DIR, 'dashboard.html');
-
-// --- Types ---
-
-interface ForecastData {
-    date: string;
-    temp_max: number;
-    temp_min: number;
-    rh: number;
-    vp: number; // calculated vapor pressure if needed
-    vpd: number;
-    eto: number;
-    rain_prob: number;
+// --- INTERFACES (Mapped from SITREP output) ---
+interface ChartDataset {
+    label: string;
+    data: number[];
+    borderColor?: string;
+    backgroundColor?: string;
+    fill?: boolean;
+    tension?: number;
+    type?: string;
+    borderWidth?: number;
+    borderDash?: number[];
 }
 
-interface PlotData {
-    profile: {
-        stage: string;
-        soil: string;
-        personality: string;
-    };
-    forecasts: ForecastData[];
-    pending_tasks: any[];
+interface ChartConfig {
+    type: string;
+    labels: string[];
+    datasets: ChartDataset[];
 }
 
-interface SitrepData {
+interface SITREP {
     timestamp: string;
-    meta: { focus: string[] };
-    plots: Record<string, PlotData>;
+    plots: Record<string, any>;
 }
 
-interface VisualData {
-    meta: {
-        generatedAt: string;
-        viewMode: string;
-        version: string;
-        focusPlot: string;
-    };
-    hud: Array<{ label: string; value: string; color: string }>;
-    hero: {
-        title: string;
-        desc: string;
-        type: string;
-        labels: string[];
-        datasets: any[];
-    } | null;
-}
+// --- MAIN ---
 
-/**
- * Reads data from stdin
- */
-function readStdin(): Promise<string> {
-    return new Promise((resolve, reject) => {
-        let data = '';
-        const stdin = process.stdin;
+const args = minimist(process.argv.slice(2));
 
-        if (stdin.isTTY) {
-            console.log('Orchard Sight Renderer: Waiting for JSON input via pipe...');
-        }
-
-        stdin.setEncoding('utf8');
-        
-        stdin.on('data', chunk => {
-            data += chunk;
-        });
-
-        stdin.on('end', () => {
-            resolve(data);
-        });
-
-        stdin.on('error', err => {
-            reject(err);
-        });
-    });
-}
-
-/**
- * Logic: Transform Raw SITREP to Visual Identity
- */
-function transformToVisual(raw: SitrepData, viewMode: string, requestedFocus?: string): VisualData {
-    // 1. Determine Target Plot
-    const availablePlots = Object.keys(raw.plots || {});
-    const targetSlug = requestedFocus && availablePlots.includes(requestedFocus) 
-        ? requestedFocus 
-        : availablePlots[0]; // Default to first available
-
-    if (!targetSlug) {
-        // Fallback for no data
-        return {
-            meta: { generatedAt: new Date().toISOString(), viewMode: 'error', version: '3.3.0', focusPlot: 'none' },
-            hud: [{ label: 'Error', value: 'No Data', color: 'text-red-500' }],
-            hero: null
-        };
-    }
-
-    const plot = raw.plots[targetSlug];
-    const texts = raw.timestamp ? raw.timestamp : new Date().toISOString(); 
-
-    // 2. HUD Construction (Today's Snapshot)
-    const today = plot.forecasts[0] || { temp_max: 0, rh: 0, vpd: 0, rain_prob: 0, eto: 0 };
-    const hud = [
-        { 
-            label: 'Max Temp', 
-            value: `${Math.round(today.temp_max)}°C`, 
-            color: today.temp_max > 35 ? 'text-red-400' : 'text-slate-200' 
-        },
-        { 
-            label: 'Min RH', 
-            value: `${Math.round(today.rh)}%`, 
-            color: today.rh < 50 ? 'text-amber-400' : 'text-emerald-400' 
-        },
-        { 
-            label: 'VPD (kPa)', 
-            value: today.vpd.toFixed(2), 
-            color: today.vpd > 1.6 ? 'text-red-400' : (today.vpd < 0.8 ? 'text-blue-400' : 'text-emerald-400')
-        },
-        { 
-            label: 'Rain Prob', 
-            value: `${Math.round(today.rain_prob)}%`, 
-            color: today.rain_prob > 40 ? 'text-blue-400' : 'text-slate-400' 
-        }
-    ];
-
-    // 3. Hero Logic (Personality Driven)
-    // Tamarind -> VPD, Lower -> Rain, Pram -> Temp
-    let heroConfig: any = { type: 'line', datasets: [] };
-    let heroTitle = 'General Overview';
-    let heroDesc = 'Standard monitoring view';
-
-    const labels = plot.forecasts.map(f => f.date.split('T')[0].slice(5)); // MM-DD
-
-    if (targetSlug.includes('tamarind') || targetSlug === 'house') {
-        // Crown Jewel logic: Watch VPD closely
-        heroTitle = 'VPD & Moisture Stress';
-        heroDesc = `${plot.profile.personality} (Monitoring Drought Risk)`;
-        heroConfig = {
-            type: 'line',
-            labels: labels,
-            datasets: [{
-                label: 'VPD (kPa)',
-                data: plot.forecasts.map(f => f.vpd),
-                borderColor: '#10b981', // Emerald
-                backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                fill: true,
-                tension: 0.4
-            }]
-        };
-    } else if (targetSlug.includes('lower')) {
-        // Fortress Logic: Watch Rain/Flood
-        heroTitle = 'Precipitation & Flood Risk';
-        heroDesc = 'Low-lying area monitoring (Flood Prone)';
-        heroConfig = {
-            type: 'bar', // Bar for rain
-            labels: labels,
-            datasets: [{
-                label: 'Rain Probability (%)',
-                data: plot.forecasts.map(f => f.rain_prob),
-                borderColor: '#3b82f6', // Blue
-                backgroundColor: 'rgba(59, 130, 246, 0.5)',
-                borderWidth: 1
-            }, {
-                type: 'line',
-                label: 'ETo (mm)', // Evapotranspiration as context
-                data: plot.forecasts.map(f => f.eto),
-                borderColor: '#f59e0b', // Amber
-                borderDash: [5, 5]
-            }]
-        };
-    } else if (targetSlug.includes('pram')) {
-        // Nursery Logic: Watch Heat
-        heroTitle = 'Heat Stress & Solar Load';
-        heroDesc = 'Seedling sensitivity tracking';
-        heroConfig = {
-            type: 'line',
-            labels: labels,
-            datasets: [{
-                label: 'Max Temp (°C)',
-                data: plot.forecasts.map(f => f.temp_max),
-                borderColor: '#ef4444', // Red
-                backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                fill: true
-            }]
-        };
-    } else {
-        // Default Logic (Smart Fallback) based on data anomalies
-        const maxVpd = Math.max(...plot.forecasts.map(f => f.vpd));
-        if (maxVpd > 1.6) {
-             heroTitle = 'Critical: Dry Air Warning';
-             heroDesc = 'High VPD detected. Irrigation priority.';
-             heroConfig = {
-                type: 'line',
-                labels: labels,
-                datasets: [{
-                    label: 'VPD (kPa)',
-                    data: plot.forecasts.map(f => f.vpd),
-                    borderColor: '#ef4444', 
-                    fill: true
-                }]
-            };
-        } else {
-            heroTitle = 'Orchard Vital Signs';
-            heroDesc = 'Routine monitoring';
-            heroConfig = {
-                type: 'line',
-                labels: labels,
-                datasets: [{
-                    label: 'VPD (kPa)',
-                    data: plot.forecasts.map(f => f.vpd),
-                    borderColor: '#10b981'
-                }, {
-                    label: 'Temp Max (°C)',
-                    data: plot.forecasts.map(f => f.temp_max),
-                    borderColor: '#f59e0b',
-                    hidden: true // hide by default
-                }]
-            };
-        }
-    }
-
-    // Attach weather metadata to dataset for tooltip usage in EJS
-    heroConfig.datasets[0].weatherData = plot.forecasts.map(f => ({
-        temp: f.temp_max,
-        rh: f.rh
-    }));
-
-    return {
-        meta: {
-            generatedAt: new Date().toISOString(),
-            viewMode: viewMode,
-            version: '3.3.0',
-            focusPlot: targetSlug
-        },
-        hud: hud,
-        hero: {
-            title: heroTitle,
-            desc: heroDesc,
-            type: heroConfig.type,
-            labels: heroConfig.labels,
-            datasets: heroConfig.datasets
-        }
-    };
-}
-
-/**
- * Main Renderer Logic
- */
 async function main() {
-    try {
-        // 1. Ensure output directory exists
-        if (!fs.existsSync(OUTPUT_DIR)) {
-            fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-        }
+    let inputData: SITREP | null = null;
 
-        // 2. Read Input Data
-        const rawInputString = await readStdin();
+    // 1. Read Input (STDIN or File)
+    if (args.json) {
+        // Read from STDIN
+        const chunks: Buffer[] = [];
+        for await (const chunk of process.stdin) {
+            chunks.push(Buffer.from(chunk));
+        }
+        const rawInputString = Buffer.concat(chunks).toString('utf-8');
+        
         let rawInput: any;
         
         try {
@@ -281,60 +58,253 @@ async function main() {
             } else {
                 throw new Error('No JSON brackets found');
             }
-        } catch (e) {
-            console.warn('⚠️  No valid JSON input received (Parsing failed). Raw input length: ' + rawInputString.length);
+        } catch (e: any) {
+            console.warn('⚠️  No valid JSON input received (Parsing failed). Raw input length ' + rawInputString.length);
+            console.warn('Error details:', e.message);
             // Fallback for empty/error input
             rawInput = { plots: {} };
         }
-
-        // 3. Transform Data (The Intelligence Layer)
-        const visualData = transformToVisual(rawInput, VIEW_MODE, FOCUS_PLOT);
-
-        // 4. Read Template
-        if (!fs.existsSync(TEMPLATE_PATH)) {
-            throw new Error(`Template not found at: ${TEMPLATE_PATH}`);
-        }
-        let templateContent = fs.readFileSync(TEMPLATE_PATH, 'utf-8');
-
-        // 5. Injection Strategy (Regex Replacement)
-        const injectionTarget = /const INJECTED_DATA = \{[\s\S]*?\};/;
-        
-        // Populate specific HTML IDs for text
-        // (This is a simple server-side render approach using string replacement for the big data, 
-        //  but we can also replace text placeholders if we wanted. 
-        //  For now, the client side JS in dashboard.ejs handles rendering based on INJECTED_DATA)
-        
-        const injectedPayload = `const INJECTED_DATA = ${JSON.stringify(visualData, null, 4)};`;
-        
-        if (!injectionTarget.test(templateContent)) {
-            throw new Error('Injection point "const INJECTED_DATA = { ... };" not found in template.');
-        }
-        
-        // Inject Title and Desc directly into HTML for SEO/Fallbacks (Optional, but good for "Pre-rendering")
-        let renderedHtml = templateContent.replace(injectionTarget, injectedPayload);
-        
-        // Quick replace for Hero Title/Desc if we want to be fancy (Server Side Rendering simple fields)
-        if (visualData.hero) {
-             renderedHtml = renderedHtml
-                .replace('<span id="hero-title">Primary Intelligence</span>', `<span id="hero-title">${visualData.hero.title}</span>`)
-                .replace('<p id="hero-desc" class="text-slate-400 text-sm">Most critical data based on current context.</p>', `<p id="hero-desc" class="text-slate-400 text-sm">${visualData.hero.desc}</p>`);
-        }
-
-        // 6. Write Output
-        fs.writeFileSync(OUTPUT_FILE, renderedHtml);
-        console.log(`✅ Dashboard rendered to: ${OUTPUT_FILE}`);
-
-        // 7. Auto-Open
-        if (OPEN_BROWSER) {
-            const command = process.platform === 'darwin' ? 'open' : 
-                          process.platform === 'win32' ? 'start' : 'xdg-open';
-            exec(`${command} ${OUTPUT_FILE}`);
-        }
-
-    } catch (err) {
-        console.error('❌ Render Failed:', err);
+        inputData = rawInput;
+    } else {
+        console.error('Usage: ... | ts-node viz-render.ts --json [--open]');
         process.exit(1);
+    }
+
+    if (!inputData) process.exit(1);
+
+    // 2. Process Data for Charts
+    const plotsHtml = [];
+
+    for (const [slug, plot] of Object.entries(inputData.plots)) {
+        // Resolve target slug logic (ASYNC NOW, but we use the passed plot object mostly)
+        // Wait, viz-render uses plot.profile from SITREP, so it doesn't need to fetch!
+        // BUT, the custom logic below uses "targetSlug.includes('tamarind')" which is fine.
+        // However, if we want to be pure, we should rely on plot.profile data.
+        
+        const targetSlug = slug.toLowerCase();
+        
+        // Prepare Forecast Chart Data
+        const labels = plot.forecasts.map((f: any) => f.date.split('T')[0].slice(5)); // MD
+
+        let heroTitle = 'General Status';
+        let heroDesc = 'Monitoring conditions';
+        let heroConfig: ChartConfig = { type: 'line', labels: [], datasets: [] };
+
+        // --- DYNAMIC CHART LOGIC (THE BRAIN) ---
+        // This logic changes based on the Plot Identity/Personality
+        
+        if (targetSlug.includes('tamarind') || plot.profile.personality.includes('Crown Jewel')) {
+            // Durian Logic: Watch VPD & Drought
+            heroTitle = 'VPD & Stress Index';
+            heroDesc = `${plot.profile.personality} (Monitoring Drought Risk)`;
+            heroConfig = {
+                type: 'line',
+                labels: labels,
+                datasets: [{
+                    label: 'VPD (kPa)',
+                    data: plot.forecasts.map((f: any) => f.vpd),
+                    borderColor: '#10b981', // Emerald
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            };
+        } else if (targetSlug.includes('lower') || plot.profile.personality.includes('Flood')) {
+            // Fortress Logic: Watch Rain/Flood
+            heroTitle = 'Precipitation & Flood Risk';
+            heroDesc = 'Low-lying area monitoring (Flood Prone)';
+            heroConfig = {
+                type: 'bar', // Bar for rain
+                labels: labels,
+                datasets: [{
+                    label: 'Rain Probability (%)',
+                    data: plot.forecasts.map((f: any) => f.rain_prob),
+                    borderColor: '#3b82f6', // Blue
+                    backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                    borderWidth: 1
+                }, {
+                    type: 'line',
+                    label: 'ETo (mm)', // Evapotranspiration as context
+                    data: plot.forecasts.map((f: any) => f.eto),
+                    borderColor: '#f59e0b', // Amber
+                    borderDash: [5, 5]
+                }]
+            };
+        } else if (targetSlug.includes('pram') || targetSlug.includes('seedling')) {
+            // Nursery Logic: Watch Heat
+            heroTitle = 'Heat Stress & Solar Load';
+            heroDesc = 'Seedling sensitivity tracking';
+            heroConfig = {
+                type: 'line',
+                labels: labels,
+                datasets: [{
+                    label: 'Max Temp (°C)',
+                    data: plot.forecasts.map((f: any) => f.temp_max),
+                    borderColor: '#ef4444', // Red
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    fill: true
+                }]
+            };
+        } else {
+            // Default Logic (Smart Fallback)
+            heroTitle = 'Overview Forecast';
+            heroDesc = 'General weather monitoring';
+            heroConfig = {
+                type: 'line',
+                labels: labels,
+                datasets: [{
+                    label: 'Max Temp',
+                    data: plot.forecasts.map((f: any) => f.temp_max),
+                    borderColor: '#6366f1',
+                    tension: 0.4
+                }, {
+                    label: 'Rain %',
+                    type: 'bar',
+                    data: plot.forecasts.map((f: any) => f.rain_prob),
+                    backgroundColor: 'rgba(59, 130, 246, 0.2)'
+                }]
+            };
+        }
+
+        // Render Plot Card HTML
+        const cardHtml = `
+        <div class="col-span-1 bg-white/5 border border-white/10 rounded-2xl p-6 hover:border-white/20 transition-all backdrop-blur-xl">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-white mb-1 uppercase tracking-widest">${slug}</h2>
+                    <div class="flex gap-2 text-xs">
+                        <span class="px-2 py-1 bg-emerald-500/20 text-emerald-300 rounded-full border border-emerald-500/30">
+                            ${plot.profile.stage}
+                        </span>
+                        <span class="px-2 py-1 bg-blue-500/20 text-blue-300 rounded-full border border-blue-500/30">
+                            ${plot.profile.soil}
+                        </span>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <div class="text-3xl font-light text-white">${plot.metrics.gdd_accumulated.toFixed(0)}</div>
+                    <div class="text-xs text-white/40 uppercase tracking-widest">Accumulated GDD</div>
+                </div>
+            </div>
+
+            <!-- DYNAMIC CHART -->
+            <div class="chart-container h-48 w-full mb-6">
+                <canvas id="chart-${slug}"></canvas>
+            </div>
+
+            <!-- CONTEXT & RECENT ACTIVITY -->
+            <div class="space-y-4">
+                <div>
+                    <h4 class="text-xs font-bold text-white/40 uppercase mb-2 tracking-widest">Situation Report</h4>
+                    <p class="text-sm text-white/80 leading-relaxed">${heroDesc}</p>
+                </div>
+
+                ${plot.recent_activities.length > 0 ? `
+                <div>
+                    <h4 class="text-xs font-bold text-white/40 uppercase mb-2 tracking-widest">Recent Ops</h4>
+                    <div class="space-y-2">
+                        ${plot.recent_activities.slice(0, 2).map((act: any) => `
+                        <div class="flex items-center gap-3 text-sm text-white/60">
+                            <span class="w-2 h-2 rounded-full bg-white/20"></span>
+                            <span class="font-mono text-emerald-400">${new Date(act.date).toLocaleDateString('th-TH', {day:'2-digit', month:'short'})}</span>
+                            <span class="truncate">${act.notes}</span>
+                        </div>
+                        `).join('')}
+                    </div>
+                </div>
+                ` : ''}
+            </div>
+            
+            <!-- Hidden Data Payload for Chart.js -->
+            <script>
+                window.chartData = window.chartData || {};
+                window.chartData['${slug}'] = ${JSON.stringify(heroConfig)};
+            </script>
+        </div>
+        `;
+        plotsHtml.push(cardHtml);
+    }
+
+    // 3. Render Final Template
+    const templatePath = resolve(__dirname, '../templates/viz/dashboard.ejs');
+    // For simplicity, we assume template content is string and we replace markers
+    const finalHtml = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orchard Sight | Bio-Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'JetBrains Mono', monospace; background-color: #050505; }
+        .grid-bg { background-image: radial-gradient(#333 1px, transparent 1px); background-size: 20px 20px; opacity: 0.1; }
+    </style>
+</head>
+<body class="text-white min-h-screen relative overflow-x-hidden">
+    <div class="fixed inset-0 grid-bg pointer-events-none"></div>
+    
+    <div class="container mx-auto px-6 py-12 relative z-10">
+        <!-- HEADER -->
+        <header class="mb-12 flex justify-between items-end border-b border-white/10 pb-6">
+            <div>
+                <h1 class="text-4xl font-bold mb-2 tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">
+                    ORCHARD SIGHT
+                </h1>
+                <p class="text-white/40 text-sm">System Time: ${new Date().toLocaleString()}</p>
+            </div>
+            <div class="text-right">
+                <div class="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-400 text-xs font-bold uppercase tracking-widest animate-pulse">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    Live Connection
+                </div>
+            </div>
+        </header>
+
+        <!-- DASHBOARD GRID -->
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            ${plotsHtml.join('\n')}
+        </div>
+    </div>
+
+    <script>
+        // Init Charts
+        document.addEventListener('DOMContentLoaded', () => {
+            Object.keys(window.chartData).forEach(slug => {
+                const ctx = document.getElementById('chart-' + slug);
+                if (ctx) {
+                    new Chart(ctx, {
+                        ...window.chartData[slug],
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: true, labels: { color: '#ffffff50', font: { family: 'JetBrains Mono' } } }
+                            },
+                            scales: {
+                                x: { grid: { color: '#ffffff10' }, ticks: { color: '#ffffff50' } },
+                                y: { grid: { color: '#ffffff10' }, ticks: { color: '#ffffff50' } }
+                            }
+                        }
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+    `;
+
+    // 4. Write Output
+    const outDir = resolve(__dirname, '../../out');
+    writeFileSync(resolve(outDir, 'dashboard.html'), finalHtml);
+    console.log('✅ Dashboard rendered to out/dashboard.html');
+
+    if (args.open) {
+        exec(`open ${resolve(outDir, 'dashboard.html')}`);
     }
 }
 
-main();
+main().catch(console.error);

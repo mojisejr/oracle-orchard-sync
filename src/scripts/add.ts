@@ -3,7 +3,7 @@ import { execSync } from 'node:child_process';
 import { supabase } from '../lib/supabase';
 import { ActivityType } from '../types/database';
 import { WeatherService } from '../lib/weather';
-import { resolvePlotLocation, resolvePlotId } from '../lib/plot-mapper';
+import { fetchPlotProfile, resolvePlotId } from '../lib/plot-service';
 
 async function main() {
   const { values } = parseArgs({
@@ -68,7 +68,6 @@ async function main() {
   const notes = values.notes || '';
   
   // Prepare Insert Data
-  // We explicitly match the database schema
   const insertData: any = {
     activity_type: activityType,
     plot_name: plotName,
@@ -125,31 +124,28 @@ async function main() {
   // --- PHASE 1: CONTEXTUAL EVIDENCE ---
   try {
     const weatherService = new WeatherService();
-    const location = resolvePlotLocation(plotName);
-    // console.log(`\n🌤️ Context Check: ${location.name_th}`); // Keep output clean for JSON parsers?
-    // Actually, if AI parses JSON, extra text might break it if it expects ONLY JSON. 
-    // But this script is run by AI via `run_in_terminal`, so it sees the whole output.
-    // The previous instruction said "Output JSON for AI Parsing". 
-    // Usually we want JSON on a separate line.
-    // I will put the table after JSON.
+    // Resolve Context (Promise)
+    const profile = await fetchPlotProfile(plotName);
     
-    const stamps = await weatherService.getHourlyForecast(location.lat, location.lon);
-    if (stamps.length > 0) {
-       const current = weatherService.findClosestStamp(stamps, new Date())?.stamp || stamps[0];
-       const startIndex = stamps.indexOf(current);
-       const advices = weatherService.generateAdvice(stamps, startIndex);
-       
-       const criticalAdvice = advices
-          .filter(a => a.status !== 'safe')
-          .map(a => `[${a.status.toUpperCase()}] ${a.message}`)
-          .join(' | ');
+    if (profile) {
+        const stamps = await weatherService.getHourlyForecast(profile.lat, profile.lon);
+        if (stamps.length > 0) {
+        const current = weatherService.findClosestStamp(stamps, new Date())?.stamp || stamps[0];
+        const startIndex = stamps.indexOf(current);
+        const advices = weatherService.generateAdvice(stamps, startIndex);
+        
+        const criticalAdvice = advices
+            .filter(a => a.status !== 'safe')
+            .map(a => `[${a.status.toUpperCase()}] ${a.message}`)
+            .join(' | ');
 
-       console.log(`\n📊 Oracle Context: ${location.name_th}`);
-       console.table([{
-          Temp: `${current.temp_c}°C`,
-          Humidity: `${current.humidity_percent}%`,
-          OracleOpinion: criticalAdvice || '✅ Safe'
-       }]);
+        console.log(`\n📊 Oracle Context: ${profile.name_th}`);
+        console.table([{
+            Temp: `${current.temp_c}°C`,
+            Humidity: `${current.humidity_percent}%`,
+            OracleOpinion: criticalAdvice || '✅ Safe'
+        }]);
+        }
     }
   } catch (e) {
     // Ignore weather errors during add

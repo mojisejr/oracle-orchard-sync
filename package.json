@@ -12,6 +12,9 @@
     "synthesize": "ts-node src/scripts/synthesize-insights.ts",
     "status": "npm run synthesize -- --json | ts-node src/scripts/viz-render.ts --open",
     "sight": "ts-node src/scripts/sight-cli.ts",
+    "plot:list": "ts-node src/scripts/manage-plots.ts list",
+    "plot:sync": "ts-node src/scripts/manage-plots.ts sync",
+    "plot:set": "ts-node src/scripts/manage-plots.ts set",
     "build": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

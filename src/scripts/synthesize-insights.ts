@@ -1,7 +1,8 @@
 
 import minimist from 'minimist';
 import { supabase } from '../lib/supabase';
-import { resolvePlotProfile, resolvePlotId, PlotProfile } from '../lib/plot-mapper';
+import { fetchPlotProfile } from '../lib/plot-service';
+import { resolvePlotId } from '../lib/plot-service';
 import { calculateGDD, calculateVPD, calculateHargreavesETo } from '../lib/agronomy';
 
 // --- INTERFACES ---
@@ -104,9 +105,6 @@ async function runSynthesis() {
     .lte('forecast_date', endDate)
     .order('forecast_date', { ascending: true });
 
-  // Note: We do NOT filter by location_id in SQL because DB might use aliases (suan-makham)
-  // while we request canonical IDs (tamarind). We filter in memory after resolution.
-
   const { data: forecastsRaw, error: weatherError } = await forecastQuery;
 
   if (weatherError) {
@@ -121,7 +119,7 @@ async function runSynthesis() {
   forecasts.forEach((row: any) => {
     const locId = resolvePlotId(row.location_id) || row.location_id;
     
-    // Filter if requested (Hybrid filtering to handle alias mismatch)
+    // Filter if requested
     if (requestedPlots.length > 0 && !requestedPlots.includes(locId)) return;
 
     if (!forecastsByLocation[locId]) {
@@ -135,7 +133,6 @@ async function runSynthesis() {
   });
 
   // 3. Fetch Recent Activities (History)
-  // We fetch a bit more to ensure we cover all plots, then filter in memory
   const { data: logs, error: logsError } = await supabase
     .from('activity_logs')
     .select('id, created_at, activity_type, plot_name, notes')
@@ -199,54 +196,24 @@ async function runSynthesis() {
       notes: []
   };
 
-  // Check 1: Forecast Freshness (Is the closest forecast today or yesterday?)
   if (forecasts.length > 0) {
-      // forecasts are ordered by date asc. First one should be today or close.
       const firstDate = new Date(forecasts[0].forecast_date);
       const diffHours = (now.getTime() - firstDate.getTime()) / (1000 * 60 * 60);
       gapAnalysis.last_update_hours = Math.floor(diffHours);
-
-      // If simplest forecast is older than 24h + 1 day (allow some buffer for "today" match)
-      // Actually, if we query GTE today, we shouldn't get old data. 
-      // But if result is empty, that means NO data for today.
   } else {
       gapAnalysis.integrity = 'stale';
       gapAnalysis.notes.push('No forecast data found for the requested period.');
       gapAnalysis.external_search_needed = true;
   }
 
-  // Check 2: Plot Coverage
   if (requestedPlots.length > 0) {
       const foundPlots = Object.keys(forecastsByLocation);
       const missing = requestedPlots.filter((p: string) => !foundPlots.includes(p));
       if (missing.length > 0) {
           gapAnalysis.missing_plots = missing;
           gapAnalysis.notes.push(`Missing forecast for plots: ${missing.join(', ')}`);
-          // If missing requested plot, we might need search IF we expect it to exist.
-          // But maybe it's just not in DB? For now, flag as missing.
       }
   }
-
-  // Check 3: Log Stale-ness (Bonus)
-  // Determine if we haven't logged in a long time for requested plots
-  const plotsToCheck = requestedPlots.length > 0 ? requestedPlots : Object.keys(forecastsByLocation);
-  plotsToCheck.forEach((pid: string) => {
-      const pLogs = logsByLocation[pid] || [];
-      if (pLogs.length === 0) {
-           gapAnalysis.notes.push(`No recent activity logs for ${pid} (History Gap).`);
-      } else {
-          const lastLog = new Date(pLogs[0].activity_date);
-          const daysSince = (now.getTime() - lastLog.getTime()) / (1000 * 3600 * 24);
-          if (daysSince > 7) {
-              gapAnalysis.notes.push(`Activity logs for ${pid} are older than 7 days.`);
-          }
-      }
-  });
-  
-  if (gapAnalysis.missing_plots.length > 0 || gapAnalysis.notes.length > 0) {
-      if (gapAnalysis.integrity === 'fresh') gapAnalysis.integrity = 'stale'; // Downgrade if gaps found
-  }
-
 
   // 5. Build SITREP
   const sitrep: SITREP = {
@@ -259,15 +226,12 @@ async function runSynthesis() {
     plots: {}
   };
 
-  // Determine which plots to include in output
-  // We use the union of plots found in Forecasts OR Logs OR Pending
   const allInvolvedPlots = new Set([
       ...Object.keys(forecastsByLocation),
       ...Object.keys(logsByLocation),
       ...Object.keys(pendingByLocation)
   ]);
   
-  // If user requested specific plots, we strictly follow that (already handled by filtering logic above, but double check)
   const targetPlots = requestedPlots.length > 0 
       ? requestedPlots 
       : Array.from(allInvolvedPlots);
@@ -275,8 +239,13 @@ async function runSynthesis() {
   for (const locId of targetPlots) {
     const locForecasts = forecastsByLocation[locId] || [];
     
-    // Resolve Context
-    const profile = resolvePlotProfile(locId); // Returns default if not found
+    // Resolve Context (ASYNC FETCH)
+    const profile = await fetchPlotProfile(locId); 
+    
+    if (!profile) {
+        console.warn(`⚠️  Skip plot ${locId}: No Profile found.`);
+        continue;
+    }
     
     // Calculate Metrics
     let gddSum = 0;
@@ -287,7 +256,6 @@ async function runSynthesis() {
         const gdd = calculateGDD(f.tc_max, f.tc_min);
         gddSum += gdd;
         const eto = calculateHargreavesETo(f.tc_max, f.tc_min, profile.lat, new Date(f.forecast_date));
-
         return {
             date: f.forecast_date,
             temp_max: f.tc_max,

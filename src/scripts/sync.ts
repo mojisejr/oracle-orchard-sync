@@ -2,7 +2,7 @@ import { parseArgs } from 'node:util';
 import { supabase } from '../lib/supabase';
 import { ActivityLog } from '../types/database';
 import { WeatherService } from '../lib/weather';
-import { resolvePlotLocation } from '../lib/plot-mapper';
+import { fetchPlotProfile, resolvePlotId } from '../lib/plot-service';
 import { WeatherStamp } from '../types/weather';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -88,7 +88,20 @@ async function main() {
     const filePath = path.join(FARMING_LOGS_DIR, filename);
 
     // Weather Integration
-    const location = resolvePlotLocation(plotName);
+    let location = { lat: 18.7, lon: 99.0, name_th: plotName }; // Default fallback
+    try {
+        const profile = await fetchPlotProfile(plotName);
+        if (profile) {
+            location = { 
+                lat: profile.lat, 
+                lon: profile.lon, 
+                name_th: profile.name_th 
+            };
+        }
+    } catch (error) {
+        console.warn(`Could not resolve location for ${plotName}, using default.`);
+    }
+
     console.log(`🌤️ Fetching weather for ${plotName} (Lat: ${location.lat}, Lon: ${location.lon})...`);
     
     let weatherStamps: WeatherStamp[] = [];
