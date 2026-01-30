@@ -10,7 +10,8 @@
     "sync": "ts-node src/scripts/sync.ts",
     "add": "ts-node src/scripts/add.ts",
     "synthesize": "ts-node src/scripts/synthesize-insights.ts",
-    "status": "npm run synthesize --silent | ts-node src/scripts/viz-render.ts --open",
+    "status": "npm run synthesize -- --json | ts-node src/scripts/viz-render.ts --open",
+    "sight": "ts-node src/scripts/sight-cli.ts",
     "build": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
