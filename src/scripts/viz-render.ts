@@ -271,9 +271,18 @@ async function main() {
         let rawInput: any;
         
         try {
-            rawInput = JSON.parse(rawInputString);
+            // Fix: Extract JSON from potential log noise
+            const firstBrace = rawInputString.indexOf('{');
+            const lastBrace = rawInputString.lastIndexOf('}');
+            
+            if (firstBrace !== -1 && lastBrace !== -1) {
+                const cleanJson = rawInputString.substring(firstBrace, lastBrace + 1);
+                rawInput = JSON.parse(cleanJson);
+            } else {
+                throw new Error('No JSON brackets found');
+            }
         } catch (e) {
-            console.warn('⚠️  No valid JSON input received.');
+            console.warn('⚠️  No valid JSON input received (Parsing failed). Raw input length: ' + rawInputString.length);
             // Fallback for empty/error input
             rawInput = { plots: {} };
         }
