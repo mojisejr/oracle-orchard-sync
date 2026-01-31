@@ -26,8 +26,10 @@ interface ChartDataset {
 
 interface ChartConfig {
     type: string;
-    labels: string[];
-    datasets: ChartDataset[];
+    data: {
+        labels: string[];
+        datasets: ChartDataset[];
+    };
 }
 
 // --- MAIN ---
@@ -88,86 +90,112 @@ async function main() {
 
         let heroTitle = 'General Status';
         let heroDesc = 'Monitoring conditions';
-        let heroConfig: ChartConfig = { type: 'line', labels: [], datasets: [] };
+        let heroConfig: ChartConfig = { type: 'line', data: { labels: [], datasets: [] } };
 
         // --- DYNAMIC CHART LOGIC (THE BRAIN) ---
         // Changed to use Profile Personality instead of Hardcoded Slugs
         
         const personalityNote = (plotProfile.personality.notes || '').toLowerCase();
-        const criticalAsset = plotProfile.personality.critical_asset;
+        const criticalAsset = (plotProfile.personality.critical_asset || '').toLowerCase();
+        const stage = (plotProfile.stage || '').toLowerCase();
 
-        if (criticalAsset === 'durian' || personalityNote.includes('pollination')) {
+        let chartData: any = { labels: labels, datasets: [] };
+        let chartType = 'line';
+
+        // --- Logic: Explicit View > Smart Context > Default ---
+        
+        const requestedView = (args.view || '').toLowerCase();
+        let mode = 'smart'; // Default to smart auto-detection
+
+        if (requestedView === 'vpd') mode = 'vpd';
+        else if (requestedView === 'rain' || requestedView === 'flood') mode = 'rain';
+        else if (requestedView === 'temp' || requestedView === 'heat') mode = 'temp';
+        else {
+            // Smart Detection logic
+             if (
+                criticalAsset === 'durian' || 
+                personalityNote.includes('pollination') || 
+                stage === 'bloom' || 
+                stage === 'pollination'
+            ) {
+                mode = 'vpd';
+            } else if (plotProfile.personality.sensitivity_flood > 7 || plotProfile.soil.includes('clayey_filled')) {
+                mode = 'rain';
+            } else if (criticalAsset === 'seedling' || plotProfile.stage === 'seedling') {
+                mode = 'temp';
+            } else {
+                mode = 'default';
+            }
+        }
+
+        // --- RENDER BASED ON MODE ---
+
+        if (mode === 'vpd') {
             // Durian Logic: Watch VPD & Drought
             heroTitle = 'VPD & Stress Index';
-            heroDesc = `Durian Management: ${plotProfile.personality.notes.substring(0, 50)}...`;
-            heroConfig = {
-                type: 'line',
-                labels: labels,
-                datasets: [{
-                    label: 'VPD (kPa)',
-                    data: forecasts.map(f => f.vpd),
-                    borderColor: '#10b981', // Emerald
-                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                    fill: true,
-                    tension: 0.4
-                }]
-            };
-        } else if (plotProfile.personality.sensitivity_flood > 7 || plotProfile.soil.includes('clayey_filled')) {
+            heroDesc = `Critical Monitoring: ${plotProfile.personality.notes.substring(0, 50)}...`;
+            chartData.datasets.push({
+                label: 'VPD (kPa)',
+                data: forecasts.map(f => f.vpd),
+                borderColor: '#10b981', // Emerald
+                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                fill: true,
+                tension: 0.4,
+                borderWidth: 3,
+                pointRadius: 4
+            });
+        } else if (mode === 'rain') {
             // Fortress Logic: Watch Rain/Flood
             heroTitle = 'Precipitation & Flood Risk';
             heroDesc = 'Low-lying/Flood Sensitive Area Monitoring';
-            heroConfig = {
-                type: 'bar', // Bar for rain
-                labels: labels,
-                datasets: [{
-                    label: 'Rain Probability (%)',
-                    data: forecasts.map(f => f.rainProb),
-                    borderColor: '#3b82f6', // Blue
-                    backgroundColor: 'rgba(59, 130, 246, 0.5)',
-                    borderWidth: 1
-                }, {
-                    type: 'line',
-                    label: 'ETo (mm)', // Evapotranspiration as context
-                    data: forecasts.map(f => f.eto),
-                    borderColor: '#f59e0b', // Amber
-                    borderDash: [5, 5]
-                }]
-            };
-        } else if (criticalAsset === 'seedling' || plotProfile.stage === 'seedling') {
+            chartType = 'bar';
+            chartData.datasets.push({
+                label: 'Rainfall (mm)',
+                data: forecasts.map(f => f.rainMm || 0),
+                borderColor: '#3b82f6', // Blue
+                backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                borderWidth: 1
+            }, {
+                type: 'line',
+                label: 'ETo (mm)',
+                data: forecasts.map(f => f.eto),
+                borderColor: '#f59e0b',
+                borderDash: [5, 5]
+            });
+        } else if (mode === 'temp') {
             // Nursery Logic: Watch Heat
             heroTitle = 'Heat Stress & Solar Load';
             heroDesc = 'Seedling Sensitivity Tracking';
-            heroConfig = {
-                type: 'line',
-                labels: labels,
-                datasets: [{
-                    label: 'Max Temp (°C)',
-                    data: forecasts.map(f => f.tempMax),
-                    borderColor: '#ef4444', // Red
-                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                    fill: true
-                }]
-            };
+            chartData.datasets.push({
+                label: 'Max Temp (°C)',
+                data: forecasts.map(f => f.tempMax),
+                borderColor: '#ef4444', // Red
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                fill: true
+            });
         } else {
-            // Default Logic (Smart Fallback)
+            // Default Logic (Overview)
             heroTitle = 'Overview Forecast';
             heroDesc = 'General Weather Monitoring';
-            heroConfig = {
-                type: 'line',
-                labels: labels,
-                datasets: [{
-                    label: 'Max Temp',
-                    data: forecasts.map(f => f.tempMax),
-                    borderColor: '#6366f1',
-                    tension: 0.4
-                }, {
-                    label: 'Rain %',
-                    type: 'bar',
-                    data: forecasts.map(f => f.rainProb),
-                    backgroundColor: 'rgba(59, 130, 246, 0.2)'
-                }]
-            };
+            chartData.datasets.push({
+                label: 'Max Temp',
+                data: forecasts.map(f => f.tempMax),
+                borderColor: '#6366f1',
+                tension: 0.4,
+                borderWidth: 3,
+                pointRadius: 4
+            }, {
+                label: 'Rain %',
+                type: 'bar',
+                data: forecasts.map(f => f.rainProb),
+                backgroundColor: 'rgba(59, 130, 246, 0.2)'
+            });
         }
+
+        heroConfig = {
+            type: chartType,
+            data: chartData
+        };
 
         // Render Plot Card HTML
         // Use sitrep.environment.current for the big number if GDD is not main focus? 

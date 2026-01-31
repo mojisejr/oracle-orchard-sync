@@ -3,7 +3,10 @@ import * as dotenv from 'dotenv';
 import path from 'path';
 
 // Force load .env from the root of projects/orchard-sync
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+dotenv.config({ 
+  path: path.resolve(__dirname, '../../.env'),
+  quiet: true 
+});
 
 const supabaseUrl = process.env.SUPABASE_URL || '';
 const supabaseKey = process.env.SUPABASE_KEY || '';

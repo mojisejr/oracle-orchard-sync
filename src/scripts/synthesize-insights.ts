@@ -216,12 +216,14 @@ async function runSynthesis() {
         const gdd = calculateGDD(f.tc_max, f.tc_min);
         gddSum += gdd;
         const eto = calculateHargreavesETo(f.tc_max, f.tc_min, profile.lat, new Date(f.forecast_date));
+        // Use 0 as default if rain_prob is missing, but capture rain_mm which is more reliable in current DB
         return {
             date: f.forecast_date,
             tempMax: f.tc_max,
             tempMin: f.tc_min,
             humidity: f.rh_percent,
-            rainProb: f.rain_prob_percent,
+            rainProb: f.rain_prob_percent || 0, 
+            rainMm: f.rain_mm || 0,
             vpd: Number(vpdVal.toFixed(2)),
             gdd: Number(gdd.toFixed(2)),
             eto: Number(eto.toFixed(2))
@@ -284,7 +286,9 @@ async function runSynthesis() {
   }
 
   // 6. Output
-  if (args.mode === 'json') {
+  const isJson = args.mode === 'json' || args.json === true;
+  
+  if (isJson) {
       console.log(JSON.stringify(systemReport, null, 2));
   } else {
       console.log(`\n🌱 SYSTEM INSIGHT REPORT [${now.toISOString()}]`);

@@ -55,6 +55,7 @@ export interface DailyMetData extends AgroMetrics {
     tempMin: number;     // Normalized from tc_min
     humidity: number;    // % Normalized from rh_percent
     rainProb: number;    // %
+    rainMm?: number;     // mm (Rainfall Volume)
     condition?: string;  // 'sunny', 'rainy', etc. (Optional descriptive)
 }
 
