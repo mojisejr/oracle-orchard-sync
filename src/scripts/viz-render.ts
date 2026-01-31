@@ -3,12 +3,18 @@ import minimist from 'minimist';
 import { readFileSync, writeFileSync } from 'fs';
 import { resolve } from 'path';
 import { exec } from 'child_process';
-import { fetchPlotProfile } from '../lib/plot-service';
+import { SITREP, DailyMetData } from '../types/orchard-core';
 
-// --- INTERFACES (Mapped from SITREP output) ---
+// Wrapper for the System Insight (matches synthesize-insights.ts output)
+interface SystemInsight {
+    timestamp: string;
+    plots: Record<string, SITREP>;
+}
+
+// --- INTERFACES For Charting ---
 interface ChartDataset {
     label: string;
-    data: number[];
+    data: (number | null)[]; // Allow null for safety
     borderColor?: string;
     backgroundColor?: string;
     fill?: boolean;
@@ -24,17 +30,12 @@ interface ChartConfig {
     datasets: ChartDataset[];
 }
 
-interface SITREP {
-    timestamp: string;
-    plots: Record<string, any>;
-}
-
 // --- MAIN ---
 
 const args = minimist(process.argv.slice(2));
 
 async function main() {
-    let inputData: SITREP | null = null;
+    let inputData: SystemInsight | null = null;
 
     // 1. Read Input (STDIN or File)
     if (args.json) {
@@ -64,7 +65,7 @@ async function main() {
             // Fallback for empty/error input
             rawInput = { plots: {} };
         }
-        inputData = rawInput;
+        inputData = rawInput as SystemInsight;
     } else {
         console.error('Usage: ... | ts-node viz-render.ts --json [--open]');
         process.exit(1);
@@ -75,71 +76,73 @@ async function main() {
     // 2. Process Data for Charts
     const plotsHtml = [];
 
-    for (const [slug, plot] of Object.entries(inputData.plots)) {
-        // Resolve target slug logic (ASYNC NOW, but we use the passed plot object mostly)
-        // Wait, viz-render uses plot.profile from SITREP, so it doesn't need to fetch!
-        // BUT, the custom logic below uses "targetSlug.includes('tamarind')" which is fine.
-        // However, if we want to be pure, we should rely on plot.profile data.
-        
-        const targetSlug = slug.toLowerCase();
+    // Safe iteration over plots
+    const plotEntries = inputData.plots ? Object.entries(inputData.plots) : [];
+
+    for (const [slug, sitrep] of plotEntries) {
+        const plotProfile = sitrep.plot.profile;
+        const forecasts = sitrep.environment.forecast;
         
         // Prepare Forecast Chart Data
-        const labels = plot.forecasts.map((f: any) => f.date.split('T')[0].slice(5)); // MD
+        const labels = forecasts.map(f => f.date.split('T')[0].slice(5)); // MD
 
         let heroTitle = 'General Status';
         let heroDesc = 'Monitoring conditions';
         let heroConfig: ChartConfig = { type: 'line', labels: [], datasets: [] };
 
         // --- DYNAMIC CHART LOGIC (THE BRAIN) ---
-        // This logic changes based on the Plot Identity/Personality
+        // Changed to use Profile Personality instead of Hardcoded Slugs
         
-        if (targetSlug.includes('tamarind') || plot.profile.personality.includes('Crown Jewel')) {
+        const personalityNote = (plotProfile.personality.notes || '').toLowerCase();
+        const criticalAsset = plotProfile.personality.critical_asset;
+
+        if (criticalAsset === 'durian' || personalityNote.includes('pollination')) {
             // Durian Logic: Watch VPD & Drought
             heroTitle = 'VPD & Stress Index';
-            heroDesc = `${plot.profile.personality} (Monitoring Drought Risk)`;
+            heroDesc = `Durian Management: ${plotProfile.personality.notes.substring(0, 50)}...`;
             heroConfig = {
                 type: 'line',
                 labels: labels,
                 datasets: [{
                     label: 'VPD (kPa)',
-                    data: plot.forecasts.map((f: any) => f.vpd),
+                    data: forecasts.map(f => f.vpd),
                     borderColor: '#10b981', // Emerald
                     backgroundColor: 'rgba(16, 185, 129, 0.1)',
                     fill: true,
                     tension: 0.4
                 }]
             };
-        } else if (targetSlug.includes('lower') || plot.profile.personality.includes('Flood')) {
+        } else if (plotProfile.personality.sensitivity_flood > 7 || plotProfile.soil.includes('clayey_filled')) {
             // Fortress Logic: Watch Rain/Flood
             heroTitle = 'Precipitation & Flood Risk';
-            heroDesc = 'Low-lying area monitoring (Flood Prone)';
+            heroDesc = 'Low-lying/Flood Sensitive Area Monitoring';
             heroConfig = {
                 type: 'bar', // Bar for rain
                 labels: labels,
                 datasets: [{
                     label: 'Rain Probability (%)',
-                    data: plot.forecasts.map((f: any) => f.rain_prob),
+                    data: forecasts.map(f => f.rainProb),
                     borderColor: '#3b82f6', // Blue
                     backgroundColor: 'rgba(59, 130, 246, 0.5)',
                     borderWidth: 1
                 }, {
                     type: 'line',
                     label: 'ETo (mm)', // Evapotranspiration as context
-                    data: plot.forecasts.map((f: any) => f.eto),
+                    data: forecasts.map(f => f.eto),
                     borderColor: '#f59e0b', // Amber
                     borderDash: [5, 5]
                 }]
             };
-        } else if (targetSlug.includes('pram') || targetSlug.includes('seedling')) {
+        } else if (criticalAsset === 'seedling' || plotProfile.stage === 'seedling') {
             // Nursery Logic: Watch Heat
             heroTitle = 'Heat Stress & Solar Load';
-            heroDesc = 'Seedling sensitivity tracking';
+            heroDesc = 'Seedling Sensitivity Tracking';
             heroConfig = {
                 type: 'line',
                 labels: labels,
                 datasets: [{
                     label: 'Max Temp (°C)',
-                    data: plot.forecasts.map((f: any) => f.temp_max),
+                    data: forecasts.map(f => f.tempMax),
                     borderColor: '#ef4444', // Red
                     backgroundColor: 'rgba(239, 68, 68, 0.1)',
                     fill: true
@@ -148,25 +151,32 @@ async function main() {
         } else {
             // Default Logic (Smart Fallback)
             heroTitle = 'Overview Forecast';
-            heroDesc = 'General weather monitoring';
+            heroDesc = 'General Weather Monitoring';
             heroConfig = {
                 type: 'line',
                 labels: labels,
                 datasets: [{
                     label: 'Max Temp',
-                    data: plot.forecasts.map((f: any) => f.temp_max),
+                    data: forecasts.map(f => f.tempMax),
                     borderColor: '#6366f1',
                     tension: 0.4
                 }, {
                     label: 'Rain %',
                     type: 'bar',
-                    data: plot.forecasts.map((f: any) => f.rain_prob),
+                    data: forecasts.map(f => f.rainProb),
                     backgroundColor: 'rgba(59, 130, 246, 0.2)'
                 }]
             };
         }
 
         // Render Plot Card HTML
+        // Use sitrep.environment.current for the big number if GDD is not main focus? 
+        // Or keep GDD as established. Let's keep GDD but format nicely.
+        const currentGDD = sitrep.environment.current.gdd || 0; 
+
+        // Null Safety for Activities
+        const recentActivities = sitrep.activities?.recent || [];
+
         const cardHtml = `
         <div class="col-span-1 bg-white/5 border border-white/10 rounded-2xl p-6 hover:border-white/20 transition-all backdrop-blur-xl">
             <div class="flex justify-between items-start mb-4">
@@ -174,16 +184,16 @@ async function main() {
                     <h2 class="text-2xl font-bold text-white mb-1 uppercase tracking-widest">${slug}</h2>
                     <div class="flex gap-2 text-xs">
                         <span class="px-2 py-1 bg-emerald-500/20 text-emerald-300 rounded-full border border-emerald-500/30">
-                            ${plot.profile.stage}
+                            ${plotProfile.stage}
                         </span>
                         <span class="px-2 py-1 bg-blue-500/20 text-blue-300 rounded-full border border-blue-500/30">
-                            ${plot.profile.soil}
+                            ${plotProfile.soil}
                         </span>
                     </div>
                 </div>
                 <div class="text-right">
-                    <div class="text-3xl font-light text-white">${plot.metrics.gdd_accumulated.toFixed(0)}</div>
-                    <div class="text-xs text-white/40 uppercase tracking-widest">Accumulated GDD</div>
+                    <div class="text-3xl font-light text-white">${currentGDD.toFixed(1)}</div>
+                    <div class="text-xs text-white/40 uppercase tracking-widest">Daily GDD</div>
                 </div>
             </div>
 
@@ -196,14 +206,14 @@ async function main() {
             <div class="space-y-4">
                 <div>
                     <h4 class="text-xs font-bold text-white/40 uppercase mb-2 tracking-widest">Situation Report</h4>
-                    <p class="text-sm text-white/80 leading-relaxed">${heroDesc}</p>
+                    <p class="text-sm text-white/80 leading-relaxed line-clamp-2">${heroDesc}</p>
                 </div>
 
-                ${plot.recent_activities.length > 0 ? `
+                ${recentActivities.length > 0 ? `
                 <div>
                     <h4 class="text-xs font-bold text-white/40 uppercase mb-2 tracking-widest">Recent Ops</h4>
                     <div class="space-y-2">
-                        ${plot.recent_activities.slice(0, 2).map((act: any) => `
+                        ${recentActivities.slice(0, 2).map((act: any) => `
                         <div class="flex items-center gap-3 text-sm text-white/60">
                             <span class="w-2 h-2 rounded-full bg-white/20"></span>
                             <span class="font-mono text-emerald-400">${new Date(act.date).toLocaleDateString('th-TH', {day:'2-digit', month:'short'})}</span>
@@ -226,8 +236,8 @@ async function main() {
     }
 
     // 3. Render Final Template
-    const templatePath = resolve(__dirname, '../templates/viz/dashboard.ejs');
-    // For simplicity, we assume template content is string and we replace markers
+    
+    // Default Template (Embedded for robustness)
     const finalHtml = `
 <!DOCTYPE html>
 <html lang="en">
@@ -265,7 +275,7 @@ async function main() {
 
         <!-- DASHBOARD GRID -->
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            ${plotsHtml.join('\n')}
+            ${plotsHtml.length > 0 ? plotsHtml.join('\n') : '<div class="col-span-3 text-center text-white/30 py-20">No data received from Cortex.</div>'}
         </div>
     </div>
 
@@ -298,13 +308,14 @@ async function main() {
     `;
 
     // 4. Write Output
-    const outDir = resolve(__dirname, '../../out');
-    writeFileSync(resolve(outDir, 'dashboard.html'), finalHtml);
-    console.log('✅ Dashboard rendered to out/dashboard.html');
+    const outputPath = resolve(__dirname, '../../out/dashboard.html');
+    writeFileSync(outputPath, finalHtml);
+    console.log(`✅ Dashboard generated at: ${outputPath}`);
 
+    // Optional: Open
     if (args.open) {
-        exec(`open ${resolve(outDir, 'dashboard.html')}`);
+        exec(`open ${outputPath}`);
     }
 }
 
-main().catch(console.error);
+main();

@@ -1,7 +1,7 @@
 import { parseArgs } from 'node:util';
 import { execSync } from 'node:child_process';
 import { supabase } from '../lib/supabase';
-import { ActivityType } from '../types/database';
+import { ActivityType } from '../types/legacy';
 import { WeatherService } from '../lib/weather';
 import { fetchPlotProfile, resolvePlotId } from '../lib/plot-service';
 

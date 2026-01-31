@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { supabase } from './supabase';
-import { WeatherStamp, WeatherAdvice, TmdHourlyResponse } from '../types/weather';
+import { WeatherStamp, WeatherAdvice, TmdHourlyResponse } from '../types/legacy';
 
 export class WeatherService {
   private apiKey: string;
@@ -47,7 +47,7 @@ export class WeatherService {
 
       const forecasts = rawData.WeatherForecasts[0].forecasts;
 
-      return forecasts.map(f => ({
+      return forecasts.map((f: any) => ({
         timestamp: f.time,
         temp_c: f.data.tc,
         humidity_percent: f.data.rh,

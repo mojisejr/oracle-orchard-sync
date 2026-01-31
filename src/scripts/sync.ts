@@ -1,9 +1,9 @@
 import { parseArgs } from 'node:util';
 import { supabase } from '../lib/supabase';
-import { ActivityLog } from '../types/database';
+import { ActivityLog } from '../types/legacy';
 import { WeatherService } from '../lib/weather';
 import { fetchPlotProfile, resolvePlotId } from '../lib/plot-service';
-import { WeatherStamp } from '../types/weather';
+import { WeatherStamp } from '../types/legacy';
 import * as fs from 'fs';
 import * as path from 'path';
 
