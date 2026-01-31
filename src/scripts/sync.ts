@@ -106,7 +106,15 @@ async function main() {
     
     let weatherStamps: WeatherStamp[] = [];
     try {
-      weatherStamps = await weatherService.getHourlyForecast(location.lat, location.lon);
+      // Priority 1: DB (App Script Synced Data - "The Truth")
+      // This handles the suan-makham vs suan_makham alias internally
+      weatherStamps = await weatherService.getForecastFromDB(plotName);
+      
+      // Priority 2: TMD API (Fallback if DB empty)
+      if (weatherStamps.length === 0) {
+         console.log(`⚠️ DB Weather Empty for ${plotName}. Fallback to TMD API...`);
+         weatherStamps = await weatherService.getHourlyForecast(location.lat, location.lon);
+      }
     } catch (e) {
       console.warn(`⚠️ Could not fetch weather for ${plotName}`);
     }

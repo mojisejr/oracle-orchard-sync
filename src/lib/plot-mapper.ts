@@ -11,7 +11,7 @@ export type WaterSourceQuality = 'normal' | 'high_manganese_iron' | 'clean_mount
 export interface PlotPersonality {
     sensitivity_drought: number; // 0-10 (10 = Dies immediately)
     sensitivity_flood: number;   // 0-10 (10 = Rot immediately)
-    critical_asset: 'durian' | 'mangosteen' | 'showcase' | 'mixed';
+    critical_asset: 'durian' | 'mangosteen' | 'showcase' | 'mixed' | 'seedling';
     notes: string;
 }
 

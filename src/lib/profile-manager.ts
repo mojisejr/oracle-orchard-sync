@@ -19,7 +19,7 @@ interface DBPlotProfile {
 
 // Fallback Data (Safety Net - copy of original hardcoded data)
 const FALLBACK_PROFILES: Record<string, PlotProfile> = {
-    'house': {
+    'suan_ban': {
         lat: 12.552967,
         lon: 102.155557,
         name_th: 'สวนบ้าน',
@@ -33,7 +33,7 @@ const FALLBACK_PROFILES: Record<string, PlotProfile> = {
             notes: 'หน้าร้าน/จุดรับแขก ห้ามโทรมเด็ดขาด (Nursery Zone) [FALLBACK]'
         }
     },
-    'tamarind': {
+    'suan_makham': {
         lat: 12.658602,
         lon: 102.204633,
         name_th: 'สวนมะขาม',
@@ -47,7 +47,7 @@ const FALLBACK_PROFILES: Record<string, PlotProfile> = {
             notes: 'ไข่ในหิน (Crown Jewel). ห้ามขาดน้ำ เกษตรประณีต [FALLBACK]'
         }
     },
-    'lower': {
+    'suan_lang': {
         lat: 12.546194,
         lon: 102.140010,
         name_th: 'สวนล่าง',
@@ -61,17 +61,17 @@ const FALLBACK_PROFILES: Record<string, PlotProfile> = {
             notes: 'ปราการด่านสุดท้าย (The Fortress). ถึกทน แต่ระวังน้ำท่วม [FALLBACK]'
         }
     },
-    'pram': {
+    'plant_shop': {
         lat: 12.552967,
         lon: 102.155557,
-        name_th: 'แปลงพันธุ์ไม้',
+        name_th: 'ปรัมพันธุ์ไม้',
         stage: 'seedling',
         soil: 'loamy_sandy',
         water: 'clean_mountain',
         personality: {
             sensitivity_drought: 9,
             sensitivity_flood: 5,
-            critical_asset: 'showcase',
+            critical_asset: 'seedling',
             notes: 'ต้นกล้าอ่อนแอ ห้ามแห้ง ห้ามแฉะเกิน [FALLBACK]'
         }
     }

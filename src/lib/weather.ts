@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { supabase } from './supabase';
 import { WeatherStamp, WeatherAdvice, TmdHourlyResponse } from '../types/weather';
 
 export class WeatherService {
@@ -58,6 +59,49 @@ export class WeatherService {
       console.error(`❌ WeatherService Error: ${error.message}`);
       return [];
     }
+  }
+
+  /**
+   * Fetch forecast from local DB (Synced from App Script)
+   * Implements "Option B: Soft Alias" for dash/underscore mismatch.
+   */
+  async getForecastFromDB(locationId: string): Promise<WeatherStamp[]> {
+    // 1. Calculate Soft Alias
+    // If suan_makham (snake), also try suan-makham (kebab)
+    const aliases = [locationId];
+    if (locationId.includes('_')) {
+        aliases.push(locationId.replace(/_/g, '-'));
+    }
+
+    console.log(`🔍 WeatherDB: Searching for ${aliases.join(' OR ')}`);
+
+    const now = new Date().toISOString();
+
+    const { data, error } = await supabase
+        .from('weather_forecasts')
+        .select('*')
+        .in('location_id', aliases) 
+        .gte('timestamp', now)
+        .order('timestamp', { ascending: true })
+        .limit(24);
+
+    if (error) {
+        console.error('❌ DB Weather Error:', error.message);
+        return [];
+    }
+
+    if (!data || data.length === 0) {
+        // Warning is fine, we might fallback to TMD
+        return [];
+    }
+
+    return data.map(row => ({
+        timestamp: row.timestamp,
+        temp_c: row.temp_c,
+        humidity_percent: row.humidity_percent,
+        rain_mm: row.rain_mm,
+        wind_speed_kmh: row.wind_speed_kmh
+    }));
   }
 
   /**
