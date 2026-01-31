@@ -4,55 +4,25 @@ import { supabase } from '../lib/supabase';
 import { fetchPlotProfile } from '../lib/plot-service';
 import { resolvePlotId } from '../lib/plot-service';
 import { calculateGDD, calculateVPD, calculateHargreavesETo } from '../lib/agronomy';
+import { 
+  WeatherForecastDB, 
+  SITREP, 
+  DailyMetData, 
+  ActivityContext,
+  OrchardPlot 
+} from '../types/orchard-core';
 
 // --- INTERFACES ---
 
-interface WeatherForecast {
-  location_id: string;
-  forecast_date: string;
-  tc_max: number;
-  tc_min: number;
-  rh_percent: number;
-  rain_prob_percent: number;
-}
-
-interface ActivityLog {
-  id: number;
-  activity_date: string;
-  activity_type: string;
-  plot_id: string;
-  notes: string;
-}
-
-interface PlotSITREP {
-  profile: {
-    stage: string;
-    soil: string;
-    personality: string;
+// Local System Wrapper (The "Envelope" for multiple SITREPs)
+interface SystemInsight {
+  timestamp: string;
+  meta: {
+      horizon_days: number;
+      focus: string[];
   };
-  metrics: {
-    gdd_accumulated: number;
-  };
-  forecasts: {
-    date: string;
-    temp_max: number;
-    temp_min: number;
-    rh: number;
-    rain_prob: number;
-    vpd: number;
-    eto: number;
-  }[];
-  recent_activities: {
-    date: string;
-    action: string;
-    notes: string;
-  }[];
-  pending_tasks: {
-    id: number;
-    action: string;
-    due_date: string;
-    notes: string;
-  }[];
+  gap_analysis: GapAnalysis;
+  plots: Record<string, SITREP>;
 }
 
 interface GapAnalysis {
@@ -61,16 +31,6 @@ interface GapAnalysis {
     missing_plots: string[];
     external_search_needed: boolean;
     notes: string[];
-}
-
-interface SITREP {
-  timestamp: string;
-  meta: {
-      horizon_days: number;
-      focus: string[];
-  };
-  gap_analysis: GapAnalysis;
-  plots: Record<string, PlotSITREP>;
 }
 
 // --- MAIN FUNCTION ---
@@ -115,7 +75,7 @@ async function runSynthesis() {
   const forecasts = forecastsRaw || [];
 
   // Group Forecasts
-  const forecastsByLocation: Record<string, WeatherForecast[]> = {};
+  const forecastsByLocation: Record<string, WeatherForecastDB[]> = {};
   forecasts.forEach((row: any) => {
     const locId = resolvePlotId(row.location_id) || row.location_id;
     
@@ -126,7 +86,7 @@ async function runSynthesis() {
         forecastsByLocation[locId] = [];
     }
     // Dedupe
-    const exists = forecastsByLocation[locId].find(f => f.forecast_date === row.forecast_date);
+    const exists = forecastsByLocation[locId].find((f: WeatherForecastDB) => f.forecast_date === row.forecast_date);
     if (!exists) {
         forecastsByLocation[locId].push(row);
     }
@@ -143,7 +103,7 @@ async function runSynthesis() {
     console.error('❌ Error fetching activity logs:', logsError);
   }
 
-  const logsByLocation: Record<string, ActivityLog[]> = {};
+  const logsByLocation: Record<string, any[]> = {};
   (logs || []).forEach((log: any) => {
     const plotId = resolvePlotId(log.plot_name) || 'unknown';
     if (plotId === 'unknown') return;
@@ -215,8 +175,8 @@ async function runSynthesis() {
       }
   }
 
-  // 5. Build SITREP
-  const sitrep: SITREP = {
+  // 5. Build System Report
+  const systemReport: SystemInsight = {
     timestamp: now.toISOString(),
     meta: {
         horizon_days: horizonDays,
@@ -250,7 +210,7 @@ async function runSynthesis() {
     // Calculate Metrics
     let gddSum = 0;
     
-    const enrichedForecasts = locForecasts.map(f => {
+    const enrichedForecasts: DailyMetData[] = locForecasts.map(f => {
         const tMean = (f.tc_max + f.tc_min) / 2;
         const vpdVal = calculateVPD(tMean, f.rh_percent);
         const gdd = calculateGDD(f.tc_max, f.tc_min);
@@ -258,49 +218,102 @@ async function runSynthesis() {
         const eto = calculateHargreavesETo(f.tc_max, f.tc_min, profile.lat, new Date(f.forecast_date));
         return {
             date: f.forecast_date,
-            temp_max: f.tc_max,
-            temp_min: f.tc_min,
-            rh: f.rh_percent,
-            rain_prob: f.rain_prob_percent,
+            tempMax: f.tc_max,
+            tempMin: f.tc_min,
+            humidity: f.rh_percent,
+            rainProb: f.rain_prob_percent,
             vpd: Number(vpdVal.toFixed(2)),
+            gdd: Number(gdd.toFixed(2)),
             eto: Number(eto.toFixed(2))
         };
     });
 
-    const plotLogs = logsByLocation[locId] || [];
-    const formattedLogs = plotLogs.map(l => ({
+    // Determine current weather (Today or First Forecast)
+    let currentMet: DailyMetData = enrichedForecasts.find(f => f.date === startDate) || enrichedForecasts[0] || {
+        date: startDate,
+        tempMax: 0,
+        tempMin: 0,
+        humidity: 0,
+        rainProb: 0,
+        vpd: 0,
+        gdd: 0,
+        eto: 0
+    };
+
+    const plotLogs: ActivityContext[] = (logsByLocation[locId] || []).map(l => ({
         date: l.activity_date,
-        action: l.activity_type,
+        type: l.activity_type,
         notes: l.notes
     }));
 
-    const plotTasks = pendingByLocation[locId] || [];
-    const formattedTasks = plotTasks.map(t => ({
-      id: t.id,
-      action: t.next_action?.action || t.activity_type,
-      due_date: t.next_action?.date || t.created_at,
-      notes: t.notes
+    const plotTasks: ActivityContext[] = (pendingByLocation[locId] || []).map(t => ({
+      date: t.next_action?.date || t.created_at,
+      type: t.next_action?.action || t.activity_type,
+      notes: `${t.notes || ''} [PENDING ID:${t.id}]`
     }));
 
-    sitrep.plots[locId] = {
-        profile: {
-            stage: profile.stage,
-            soil: profile.soil,
-            personality: profile.personality?.notes || 'Standard'
+    // Construct the Standard SITREP
+    const sitrep: SITREP = {
+        timestamp: new Date().toISOString(),
+        plot: {
+            id: locId,
+            profile: profile
         },
-        metrics: {
-            gdd_accumulated: Number(gddSum.toFixed(2))
+        environment: {
+            history: [], // Not fetching history yet in this phase
+            current: currentMet,
+            forecast: enrichedForecasts
         },
-        forecasts: enrichedForecasts,
-        recent_activities: formattedLogs,
-        pending_tasks: formattedTasks
+        activities: {
+            recent: plotLogs,
+            planned: plotTasks,
+            gapAnalysis: [] 
+        },
+        insight: {
+            status: 'nominal', // Default
+            headlines: []
+        }
     };
+    
+    // Simple Insight Logic (Phase 1 placeholder)
+    if (gddSum > 30) {
+        sitrep.insight?.headlines.push(`High Growth Expected (GDD: ${gddSum.toFixed(1)})`);
+    }
+
+    systemReport.plots[locId] = sitrep;
   }
 
   // 6. Output
-  // Check if pipe is open before writing
-  if (process.stdout.writable) {
-    console.log(JSON.stringify(sitrep, null, 2));
+  if (args.mode === 'json') {
+      console.log(JSON.stringify(systemReport, null, 2));
+  } else {
+      console.log(`\n🌱 SYSTEM INSIGHT REPORT [${now.toISOString()}]`);
+      console.log(`   Period: ${startDate} -> ${endDate} (${horizonDays} days)`);
+      if (gapAnalysis.integrity !== 'fresh') {
+          console.log(`   ⚠️  Integrity: ${gapAnalysis.integrity.toUpperCase()}`);
+          gapAnalysis.notes.forEach(n => console.log(`      - ${n}`));
+      }
+
+      Object.values(systemReport.plots).forEach(p => {
+          console.log(`\n----------------------------------------`);
+          console.log(`📍 ${p.plot.id.toUpperCase()} (${p.plot.profile.name_th})`);
+          console.log(`   Role: ${p.plot.profile.personality.critical_asset} | Soil: ${p.plot.profile.soil}`);
+          console.log(`   🌡  Current: ${p.environment.current.tempMax}°C / ${p.environment.current.vpd} kPa`);
+          console.log(`   🔮 Forecasts:`);
+          p.environment.forecast.forEach(f => {
+              console.log(`      [${f.date}] Max ${f.tempMax}°C | Rain ${f.rainProb}% | VPD ${f.vpd}`);
+          });
+          
+          if (p.activities.recent.length > 0) {
+              console.log(`   🚜 Recent Activity:`);
+              p.activities.recent.forEach(a => console.log(`      - ${a.date}: ${a.type} (${a.notes})`));
+          }
+          if (p.activities.planned && p.activities.planned.length > 0) {
+              console.log(`   📌 Continuous/Pending:`);
+              p.activities.planned.forEach(a => console.log(`      - ${a.date}: ${a.type} ${a.notes}`));
+          }
+      });
+      console.log(`\n----------------------------------------`);
   }
 }
 
