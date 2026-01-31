@@ -298,7 +298,10 @@ async function runSynthesis() {
   }
 
   // 6. Output
-  console.log(JSON.stringify(sitrep, null, 2));
+  // Check if pipe is open before writing
+  if (process.stdout.writable) {
+    console.log(JSON.stringify(sitrep, null, 2));
+  }
 }
 
 runSynthesis().catch(err => {

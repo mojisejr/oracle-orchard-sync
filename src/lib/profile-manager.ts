@@ -123,7 +123,7 @@ export class ProfileManager {
 
             this.cache = mappedProfiles;
             this.lastFetch = now;
-            console.log(`✅ ProfileManager: Loaded ${Object.keys(this.cache).length} profiles from DB.`);
+            // console.log(`✅ ProfileManager: Loaded ${Object.keys(this.cache).length} profiles from DB.`);
             
             return this.cache;
 
