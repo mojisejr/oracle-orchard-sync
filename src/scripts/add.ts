@@ -55,7 +55,7 @@ async function main() {
   // Phase 4: Hard Gate - Strict Validation
   if (!resolvedPlotId) {
     console.error(`❌ Error: Unknown plot name "${rawPlotName}".`);
-    console.error(`Valid options: house, tamarind, lower, pram (or keys: บ้าน, มะขาม, ล่าง, พันธุ์ไม้)`);
+    console.error(`Valid options: suan_ban, suan_makham, suan_lang, plant_shop (or keys: บ้าน, มะขาม, ล่าง, พันธุ์ไม้)`);
     process.exit(1);
   }
 

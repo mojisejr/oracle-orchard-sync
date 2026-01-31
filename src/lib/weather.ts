@@ -75,14 +75,15 @@ export class WeatherService {
 
     console.log(`🔍 WeatherDB: Searching for ${aliases.join(' OR ')}`);
 
-    const now = new Date().toISOString();
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
 
     const { data, error } = await supabase
         .from('weather_forecasts')
         .select('*')
         .in('location_id', aliases) 
-        .gte('timestamp', now)
-        .order('timestamp', { ascending: true })
+        .gte('forecast_date', todayStr)
+        .order('forecast_date', { ascending: true })
         .limit(24);
 
     if (error) {
@@ -96,11 +97,11 @@ export class WeatherService {
     }
 
     return data.map(row => ({
-        timestamp: row.timestamp,
-        temp_c: row.temp_c,
-        humidity_percent: row.humidity_percent,
-        rain_mm: row.rain_mm,
-        wind_speed_kmh: row.wind_speed_kmh
+        timestamp: row.forecast_date,
+        temp_c: row.tc_max || row.temp_c, // Support both if schema varies
+        humidity_percent: row.rh_percent || row.humidity_percent,
+        rain_mm: row.rain_mm || row.rain_prob_percent, // Note: probability vs actual mm
+        wind_speed_kmh: row.wind_speed_kmh || 0
     }));
   }
 
