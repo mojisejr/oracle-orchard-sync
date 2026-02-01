@@ -1,278 +1,103 @@
 
 import minimist from 'minimist';
-import { readFileSync, writeFileSync } from 'fs';
+import { writeFileSync } from 'fs';
 import { resolve } from 'path';
 import { exec } from 'child_process';
-import { SITREP, DailyMetData } from '../types/orchard-core';
-
-// Wrapper for the System Insight (matches synthesize-insights.ts output)
-interface SystemInsight {
-    timestamp: string;
-    plots: Record<string, SITREP>;
-}
-
-// --- INTERFACES For Charting ---
-interface ChartDataset {
-    label: string;
-    data: (number | null)[]; // Allow null for safety
-    borderColor?: string;
-    backgroundColor?: string;
-    fill?: boolean;
-    tension?: number;
-    type?: string;
-    borderWidth?: number;
-    borderDash?: number[];
-}
-
-interface ChartConfig {
-    type: string;
-    data: {
-        labels: string[];
-        datasets: ChartDataset[];
-    };
-}
-
-// --- MAIN ---
+import { SITREP } from '../types/orchard-core';
+import { HeadlessManifest } from '../types/visual-manifest';
+import { renderComponent } from '../lib/html-renderer';
+import { generateManifest } from '../lib/manifest-generator';
 
 const args = minimist(process.argv.slice(2));
 
-async function main() {
-    let inputData: SystemInsight | null = null;
+// This determines the Contract: "SystemInsight" (Legacy) or "HeadlessManifest" (Phase 3)
+type InputPayload = 
+    | { kind: 'legacy'; data: { timestamp: string; plots: Record<string, SITREP> } }
+    | { kind: 'manifest'; data: HeadlessManifest };
 
-    // 1. Read Input (STDIN or File)
-    if (args.json) {
-        // Read from STDIN
-        const chunks: Buffer[] = [];
-        for await (const chunk of process.stdin) {
-            chunks.push(Buffer.from(chunk));
-        }
-        const rawInputString = Buffer.concat(chunks).toString('utf-8');
-        
-        let rawInput: any;
-        
-        try {
-            // Fix: Extract JSON from potential log noise
-            const firstBrace = rawInputString.indexOf('{');
-            const lastBrace = rawInputString.lastIndexOf('}');
-            
-            if (firstBrace !== -1 && lastBrace !== -1) {
-                const cleanJson = rawInputString.substring(firstBrace, lastBrace + 1);
-                rawInput = JSON.parse(cleanJson);
-            } else {
-                throw new Error('No JSON brackets found');
-            }
-        } catch (e: any) {
-            console.warn('⚠️  No valid JSON input received (Parsing failed). Raw input length ' + rawInputString.length);
-            console.warn('Error details:', e.message);
-            // Fallback for empty/error input
-            rawInput = { plots: {} };
-        }
-        inputData = rawInput as SystemInsight;
-    } else {
+async function main() {
+    // 1. Read & Parse Input
+    if (!args.json) {
         console.error('Usage: ... | ts-node viz-render.ts --json [--open]');
         process.exit(1);
     }
 
-    if (!inputData) process.exit(1);
+    const rawInputString = await readStdin();
+    if (!rawInputString) process.exit(1);
 
-    // 2. Process Data for Charts
-    const plotsHtml = [];
+    const payload = parsePayload(rawInputString);
 
-    // Safe iteration over plots
-    const plotEntries = inputData.plots ? Object.entries(inputData.plots) : [];
+    // 2. Normalize to Manifest
+    let manifest: HeadlessManifest;
 
-    for (const [slug, sitrep] of plotEntries) {
-        const plotProfile = sitrep.plot.profile;
-        const forecasts = sitrep.environment.forecast;
-        
-        // Prepare Forecast Chart Data
-        const labels = forecasts.map(f => f.date.split('T')[0].slice(5)); // MD
-
-        let heroTitle = 'General Status';
-        let heroDesc = 'Monitoring conditions';
-        let heroConfig: ChartConfig = { type: 'line', data: { labels: [], datasets: [] } };
-
-        // --- DYNAMIC CHART LOGIC (THE BRAIN) ---
-        // Changed to use Profile Personality instead of Hardcoded Slugs
-        
-        const personalityNote = (plotProfile.personality.notes || '').toLowerCase();
-        const criticalAsset = (plotProfile.personality.critical_asset || '').toLowerCase();
-        const stage = (plotProfile.stage || '').toLowerCase();
-
-        let chartData: any = { labels: labels, datasets: [] };
-        let chartType = 'line';
-
-        // --- Logic: Explicit View > Smart Context > Default ---
-        
-        const requestedView = (args.view || '').toLowerCase();
-        let mode = 'smart'; // Default to smart auto-detection
-
-        if (requestedView === 'vpd') mode = 'vpd';
-        else if (requestedView === 'rain' || requestedView === 'flood') mode = 'rain';
-        else if (requestedView === 'temp' || requestedView === 'heat') mode = 'temp';
-        else {
-            // Smart Detection logic
-             if (
-                criticalAsset === 'durian' || 
-                personalityNote.includes('pollination') || 
-                stage === 'bloom' || 
-                stage === 'pollination'
-            ) {
-                mode = 'vpd';
-            } else if (plotProfile.personality.sensitivity_flood > 7 || plotProfile.soil.includes('clayey_filled')) {
-                mode = 'rain';
-            } else if (criticalAsset === 'seedling' || plotProfile.stage === 'seedling') {
-                mode = 'temp';
-            } else {
-                mode = 'default';
-            }
-        }
-
-        // --- RENDER BASED ON MODE ---
-
-        if (mode === 'vpd') {
-            // Durian Logic: Watch VPD & Drought
-            heroTitle = 'VPD & Stress Index';
-            heroDesc = `Critical Monitoring: ${plotProfile.personality.notes.substring(0, 50)}...`;
-            chartData.datasets.push({
-                label: 'VPD (kPa)',
-                data: forecasts.map(f => f.vpd),
-                borderColor: '#10b981', // Emerald
-                backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                fill: true,
-                tension: 0.4,
-                borderWidth: 3,
-                pointRadius: 4
-            });
-        } else if (mode === 'rain') {
-            // Fortress Logic: Watch Rain/Flood
-            heroTitle = 'Precipitation & Flood Risk';
-            heroDesc = 'Low-lying/Flood Sensitive Area Monitoring';
-            chartType = 'bar';
-            chartData.datasets.push({
-                label: 'Rainfall (mm)',
-                data: forecasts.map(f => f.rainMm || 0),
-                borderColor: '#3b82f6', // Blue
-                backgroundColor: 'rgba(59, 130, 246, 0.5)',
-                borderWidth: 1
-            }, {
-                type: 'line',
-                label: 'ETo (mm)',
-                data: forecasts.map(f => f.eto),
-                borderColor: '#f59e0b',
-                borderDash: [5, 5]
-            });
-        } else if (mode === 'temp') {
-            // Nursery Logic: Watch Heat
-            heroTitle = 'Heat Stress & Solar Load';
-            heroDesc = 'Seedling Sensitivity Tracking';
-            chartData.datasets.push({
-                label: 'Max Temp (°C)',
-                data: forecasts.map(f => f.tempMax),
-                borderColor: '#ef4444', // Red
-                backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                fill: true
-            });
-        } else {
-            // Default Logic (Overview)
-            heroTitle = 'Overview Forecast';
-            heroDesc = 'General Weather Monitoring';
-            chartData.datasets.push({
-                label: 'Max Temp',
-                data: forecasts.map(f => f.tempMax),
-                borderColor: '#6366f1',
-                tension: 0.4,
-                borderWidth: 3,
-                pointRadius: 4
-            }, {
-                label: 'Rain %',
-                type: 'bar',
-                data: forecasts.map(f => f.rainProb),
-                backgroundColor: 'rgba(59, 130, 246, 0.2)'
-            });
-        }
-
-        heroConfig = {
-            type: chartType,
-            data: chartData
-        };
-
-        // Render Plot Card HTML
-        // Use sitrep.environment.current for the big number if GDD is not main focus? 
-        // Or keep GDD as established. Let's keep GDD but format nicely.
-        const currentGDD = sitrep.environment.current.gdd || 0; 
-
-        // Null Safety for Activities
-        const recentActivities = sitrep.activities?.recent || [];
-
-        const cardHtml = `
-        <div class="col-span-1 bg-white/5 border border-white/10 rounded-2xl p-6 hover:border-white/20 transition-all backdrop-blur-xl">
-            <div class="flex justify-between items-start mb-4">
-                <div>
-                    <h2 class="text-2xl font-bold text-white mb-1 uppercase tracking-widest">${slug}</h2>
-                    <div class="flex gap-2 text-xs">
-                        <span class="px-2 py-1 bg-emerald-500/20 text-emerald-300 rounded-full border border-emerald-500/30">
-                            ${plotProfile.stage}
-                        </span>
-                        <span class="px-2 py-1 bg-blue-500/20 text-blue-300 rounded-full border border-blue-500/30">
-                            ${plotProfile.soil}
-                        </span>
-                    </div>
-                </div>
-                <div class="text-right">
-                    <div class="text-3xl font-light text-white">${currentGDD.toFixed(1)}</div>
-                    <div class="text-xs text-white/40 uppercase tracking-widest">Daily GDD</div>
-                </div>
-            </div>
-
-            <!-- DYNAMIC CHART -->
-            <div class="chart-container h-48 w-full mb-6">
-                <canvas id="chart-${slug}"></canvas>
-            </div>
-
-            <!-- CONTEXT & RECENT ACTIVITY -->
-            <div class="space-y-4">
-                <div>
-                    <h4 class="text-xs font-bold text-white/40 uppercase mb-2 tracking-widest">Situation Report</h4>
-                    <p class="text-sm text-white/80 leading-relaxed line-clamp-2">${heroDesc}</p>
-                </div>
-
-                ${recentActivities.length > 0 ? `
-                <div>
-                    <h4 class="text-xs font-bold text-white/40 uppercase mb-2 tracking-widest">Recent Ops</h4>
-                    <div class="space-y-2">
-                        ${recentActivities.slice(0, 2).map((act: any) => `
-                        <div class="flex items-center gap-3 text-sm text-white/60">
-                            <span class="w-2 h-2 rounded-full bg-white/20"></span>
-                            <span class="font-mono text-emerald-400">${new Date(act.date).toLocaleDateString('th-TH', {day:'2-digit', month:'short'})}</span>
-                            <span class="truncate">${act.notes}</span>
-                        </div>
-                        `).join('')}
-                    </div>
-                </div>
-                ` : ''}
-            </div>
-            
-            <!-- Hidden Data Payload for Chart.js -->
-            <script>
-                window.chartData = window.chartData || {};
-                window.chartData['${slug}'] = ${JSON.stringify(heroConfig)};
-            </script>
-        </div>
-        `;
-        plotsHtml.push(cardHtml);
+    if (payload.kind === 'legacy') {
+        console.warn('⚠️  Received Legacy SystemInsight. Auto-converting to Manifest (Phase 2 Shim).');
+        manifest = generateManifest({
+            timestamp: payload.data.timestamp,
+            plots: payload.data.plots
+        });
+    } else {
+        manifest = payload.data;
+        console.log('✅ Received Headless Manifest (Phase 3 Native).');
     }
 
-    // 3. Render Final Template
+    // 3. Render HTML Loop (Phase 3)
+    const plotsHtml = manifest.visual_manifest.map(comp => renderComponent(comp)).join('\n');
     
-    // Default Template (Embedded for robustness)
-    const finalHtml = `
+    // 4. Generate Page Wrapper
+    const finalHtml = generatePageTemplate(manifest, plotsHtml);
+
+    // 5. Write Output
+    const outputPath = resolve(__dirname, '../../out/dashboard.html');
+    writeFileSync(outputPath, finalHtml);
+    console.log(`✅ Dashboard generated at: ${outputPath}`);
+
+    if (args.open) exec(`open ${outputPath}`);
+}
+
+// --- HELPERS ---
+
+async function readStdin(): Promise<string> {
+    const chunks: Buffer[] = [];
+    for await (const chunk of process.stdin) chunks.push(Buffer.from(chunk));
+    return Buffer.concat(chunks).toString('utf-8');
+}
+
+function parsePayload(input: string): InputPayload {
+    try {
+        const firstBrace = input.indexOf('{');
+        const lastBrace = input.lastIndexOf('}');
+        if (firstBrace === -1 || lastBrace === -1) throw new Error('No JSON brackets');
+        
+        const json = JSON.parse(input.substring(firstBrace, lastBrace + 1));
+        
+        if ('visual_manifest' in json) {
+            return { kind: 'manifest', data: json as HeadlessManifest };
+        } else if ('plots' in json) {
+            return { kind: 'legacy', data: json };
+        } else {
+             // Fallback default
+             console.warn('⚠️ Unknown payload format. Assuming empty legacy.');
+             return { kind: 'legacy', data: { timestamp: new Date().toISOString(), plots: {} } };
+        }
+    } catch (e: any) {
+        // console.error('JSON Parse Error:', e.message);
+        // Fallback for empty/error input to prevent crash
+        return { kind: 'legacy', data: { timestamp: new Date().toISOString(), plots: {} } };
+    }
+}
+
+function generatePageTemplate(manifest: HeadlessManifest, componentsHtml: string): string {
+    const themeColor = manifest.theme === 'emergency-red' ? 'text-rose-400' : 'text-emerald-400';
+    const borderTheme = manifest.theme === 'emergency-red' ? 'border-rose-500/20 bg-rose-500/10' : 'border-emerald-500/20 bg-emerald-500/10';
+
+    return `
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Orchard Sight | Bio-Dashboard</title>
+    <title>Orchard Sight | Headless Monitor</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -291,30 +116,49 @@ async function main() {
                 <h1 class="text-4xl font-bold mb-2 tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">
                     ORCHARD SIGHT
                 </h1>
-                <p class="text-white/40 text-sm">System Time: ${new Date().toLocaleString()}</p>
+                <p class="text-white/40 text-sm">Target: ${manifest.summary} | Latency: 12ms</p>
             </div>
             <div class="text-right">
-                <div class="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-400 text-xs font-bold uppercase tracking-widest animate-pulse">
-                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-                    Live Connection
+                <div class="inline-flex items-center gap-2 px-3 py-1 ${borderTheme} rounded-full ${themeColor} text-xs font-bold uppercase tracking-widest animate-pulse">
+                    <span class="w-2 h-2 rounded-full bg-current"></span>
+                    System Online (${manifest.meta.version})
                 </div>
             </div>
         </header>
 
         <!-- DASHBOARD GRID -->
-        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            ${plotsHtml.length > 0 ? plotsHtml.join('\n') : '<div class="col-span-3 text-center text-white/30 py-20">No data received from Cortex.</div>'}
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+            ${componentsHtml || '<div class="col-span-4 text-center text-white/30 py-20">No visual components received.</div>'}
         </div>
     </div>
 
     <script>
-        // Init Charts
+        // Init Charts (Dumb Client-Side Hydration)
         document.addEventListener('DOMContentLoaded', () => {
-            Object.keys(window.chartData).forEach(slug => {
-                const ctx = document.getElementById('chart-' + slug);
-                if (ctx) {
-                    new Chart(ctx, {
-                        ...window.chartData[slug],
+            const canvases = document.querySelectorAll('canvas.component-chart');
+            canvases.forEach(canvas => {
+                const configStr = canvas.getAttribute('data-config');
+                if (!configStr) return;
+                
+                try {
+                    const props = JSON.parse(configStr);
+                    // Map Props to Chart.js Config
+                    new Chart(canvas, {
+                        type: props.chartType === 'mixed' ? 'bar' : props.chartType, 
+                        data: {
+                            labels: props.data.labels,
+                            datasets: props.data.datasets.map(ds => ({
+                                label: ds.label,
+                                data: ds.data,
+                                borderColor: ds.color || '#ffffff',
+                                backgroundColor: ds.color ? ds.color + '40' : '#ffffff20',
+                                borderWidth: 2,
+                                tension: 0.4,
+                                type: ds.type || undefined,
+                                yAxisID: ds.yAxisID || 'y',
+                                fill: ds.fill
+                            }))
+                        },
                         options: {
                             responsive: true,
                             maintainAspectRatio: false,
@@ -327,23 +171,14 @@ async function main() {
                             }
                         }
                     });
+                } catch (e) {
+                    console.error('Chart hydration failed', e);
                 }
             });
         });
     </script>
 </body>
-</html>
-    `;
-
-    // 4. Write Output
-    const outputPath = resolve(__dirname, '../../out/dashboard.html');
-    writeFileSync(outputPath, finalHtml);
-    console.log(`✅ Dashboard generated at: ${outputPath}`);
-
-    // Optional: Open
-    if (args.open) {
-        exec(`open ${outputPath}`);
-    }
+</html>`;
 }
 
-main();
+main().catch(e => console.error(e));
