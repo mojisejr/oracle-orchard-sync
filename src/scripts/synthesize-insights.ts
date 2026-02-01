@@ -197,7 +197,15 @@ async function runSynthesis() {
       : Array.from(allInvolvedPlots);
 
   for (const locId of targetPlots) {
-    const locForecasts = forecastsByLocation[locId] || [];
+    let locForecasts = forecastsByLocation[locId] || [];
+
+    // Fallback: If no forecast for this plot, try to use regional weather (e.g., plant_shop -> suan_ban)
+    if (locForecasts.length === 0) {
+        if (locId === 'plant_shop') {
+            locForecasts = forecastsByLocation['suan_ban'] || [];
+            console.warn(`ℹ️  Regional Mapping: using suan_ban weather for ${locId}`);
+        }
+    }
     
     // Resolve Context (ASYNC FETCH)
     const profile = await fetchPlotProfile(locId); 
