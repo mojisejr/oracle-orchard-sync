@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { fetchPlotProfile } from '../lib/plot-service';
 import { resolvePlotId } from '../lib/plot-service';
 import { calculateGDD, calculateVPD, calculateHargreavesETo } from '../lib/agronomy';
+import { generateManifest } from '../lib/manifest-generator'; // Phase 2: Brain Hook
 import { 
   WeatherForecastDB, 
   SITREP, 
@@ -295,9 +296,17 @@ async function runSynthesis() {
 
   // 6. Output
   const isJson = args.mode === 'json' || args.json === true;
-  
+  const asManifest = args.manifest === true;
+
   if (isJson) {
-      console.log(JSON.stringify(systemReport, null, 2));
+      if (asManifest) {
+          // Phase 2: Headless Output (Brain -> Manifest)
+          const manifest = generateManifest(systemReport);
+          console.log(JSON.stringify(manifest, null, 2));
+      } else {
+          // Legacy Output (Phase 1: Brain -> Data)
+          console.log(JSON.stringify(systemReport, null, 2));
+      }
   } else {
       console.log(`\n🌱 SYSTEM INSIGHT REPORT [${now.toISOString()}]`);
       console.log(`   Period: ${startDate} -> ${endDate} (${horizonDays} days)`);
