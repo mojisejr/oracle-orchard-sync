@@ -102,11 +102,20 @@ function analyzeGlobalContext(data: GenerationContext['system']): GlobalAnalysis
         
         if (localMaxRain > maxRain) maxRain = localMaxRain;
         if (localMaxVPD > maxVPD) maxVPD = localMaxVPD;
+
+        // CHECK BRAIN INSIGHT (Reflex/Manual Override)
+        if (p.insight?.status === 'critical') {
+            isEmergency = true;
+            headline = `🚨 ${p.insight.headlines[0] || 'CRITICAL ALERT'}`;
+            bullets.push(`${p.plot.id}: ${p.insight.headlines.join(', ')}`);
+        }
     });
 
     // Pattern Matching (Moved from viz-render.ts)
     // 1. Flood Risk
-    if (maxRain > 50) { // Threshold 50mm
+    if (isEmergency) {
+        mode = 'rain'; // Default to rain/emergency view
+    } else if (maxRain > 50) { // Threshold 50mm
         mode = 'rain';
         headline = `⚠ Heavy Rain Alert (${maxRain}mm detected)`;
         isEmergency = true;
