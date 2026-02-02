@@ -12,32 +12,8 @@ import { generateManifest } from '../lib/manifest-generator';
 import { SITREP } from '../types/orchard-core';
 
 // --- REFLEX LOGIC (Phase 4) ---
-
-function applyHeuristics(sitrep: SITREP) {
-    const current = sitrep.environment.current;
-    const forecast = sitrep.environment.forecast;
-    
-    // 1. Water Stress Check (VPD)
-    if (current.vpd > 2.0) {
-        sitrep.insight!.status = 'watch';
-        sitrep.insight!.headlines.push('High Water Stress (VPD > 2.0)');
-    }
-
-    // 2. Flood Risk Check (Rain)
-    const heavyRain = forecast.some(f => (f.rainMm || 0) > 30);
-    if (heavyRain) {
-        sitrep.insight!.status = 'critical'; // Emergency
-        sitrep.insight!.headlines.push('Heavy Rain Alert (>30mm forecasted)');
-    }
-
-    // 3. Drought Check (Soil Moisture - Simulated based on Rain/VPD for now as we don't have moisture sensor in DB yet)
-    // If no rain for 5 days and High VPD
-    const drySpell = forecast.slice(0, 5).every(f => (f.rainMm || 0) < 1);
-    if (drySpell && current.vpd > 1.5) {
-        sitrep.insight!.status = 'watch';
-        sitrep.insight!.headlines.push('Drought Conditions Developing');
-    }
-}
+// [DEPRECATED] Heuristics removed to ensure Dumb Renderer architecture.
+// Logic is now upstream (Supabase/AI) or downstream (User Command).
 
 // --- STD-IN READER (Phase 5) ---
 
@@ -79,10 +55,10 @@ async function main() {
 
     // 2. Apply Logic (Brain)
     
-    // 2.a Heuristics (Reflexes)
-    Object.values(context.plots).forEach(sitrep => {
-        applyHeuristics(sitrep);
-    });
+    // 2.a Heuristics (Reflexes) - DEPRECATED
+    // Object.values(context.plots).forEach(sitrep => {
+    //     applyHeuristics(sitrep);
+    // });
 
     // 2.b Manual Override (Oracle Interface Phase 5)
     // Checks if STDIN has JSON payload to override insights

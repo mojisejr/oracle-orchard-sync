@@ -62,6 +62,10 @@ export function generateManifest(data: GenerationContext['system'], filterPlotId
         components.push(...plotComponents);
     });
 
+    // Calculate Dynamic Horizon
+    const firstPlot = Object.values(data.plots)[0];
+    const detectedHorizon = firstPlot ? firstPlot.environment.forecast.length : 3;
+
     return {
         summary: filterPlotId ? `Focus: ${filterPlotId.toUpperCase()}` : context.headline,
         theme,
@@ -69,8 +73,8 @@ export function generateManifest(data: GenerationContext['system'], filterPlotId
         visual_manifest: components,
         meta: {
             generated_at: new Date().toISOString(),
-            horizon_days: 3, // Default
-            version: "2.0-headless"
+            horizon_days: detectedHorizon,
+            version: "2.1-headless-dumb"
         }
     };
 }
@@ -96,17 +100,17 @@ function analyzeGlobalContext(data: GenerationContext['system']): GlobalAnalysis
     // Scan all plots for critical signals
     const plots = Object.values(data.plots);
     
-    // Aggregates
-    let maxRain = 0;
-    let maxVPD = 0;
+    // Aggregates (Unused in Dumb Mode)
+    // let maxRain = 0;
+    // let maxVPD = 0;
     
     plots.forEach(p => {
-        const fc = p.environment.forecast;
-        const localMaxRain = Math.max(...fc.map(d => d.rainMm || 0));
-        const localMaxVPD = Math.max(...fc.map(d => d.vpd || 0));
+        // const fc = p.environment.forecast;
+        // const localMaxRain = Math.max(...fc.map(d => d.rainMm || 0));
+        // const localMaxVPD = Math.max(...fc.map(d => d.vpd || 0));
         
-        if (localMaxRain > maxRain) maxRain = localMaxRain;
-        if (localMaxVPD > maxVPD) maxVPD = localMaxVPD;
+        // if (localMaxRain > maxRain) maxRain = localMaxRain;
+        // if (localMaxVPD > maxVPD) maxVPD = localMaxVPD;
 
         // CHECK BRAIN INSIGHT (Reflex/Manual Override)
         if (p.insight?.status === 'critical') {
@@ -116,8 +120,10 @@ function analyzeGlobalContext(data: GenerationContext['system']): GlobalAnalysis
         }
     });
 
-    // Pattern Matching (Moved from viz-render.ts)
-    // 1. Flood Risk
+    // Pattern Matching (DEPRECATED: Dumb Renderer)
+    // Removed automatic mode switching based on thresholds.
+    // Mode is now exclusively controlled by arguments or default.
+    /*
     if (isEmergency) {
         mode = 'rain'; // Default to rain/emergency view
     } else if (maxRain > 50) { // Threshold 50mm
@@ -132,14 +138,15 @@ function analyzeGlobalContext(data: GenerationContext['system']): GlobalAnalysis
         headline = `High Transpiration Rate (VPD ${maxVPD.toFixed(2)} kPa)`;
         bullets.push(`Monitor irrigation closely. High water demand.`);
     }
+    */
 
     return {
         isEmergency,
-        isDrought: maxVPD > 1.5,
+        isDrought: false, // Deprecated logic
         isMobile: false,
         headline,
         bulletPoints: bullets.length > 0 ? bullets : ['Conditions are nominal.'],
-        mode
+        mode // Always default unless overridden by forceMode in main function
     };
 }
 
@@ -150,17 +157,10 @@ function generatePlotComponents(sitrep: SITREP, globalMode: GlobalAnalysis['mode
     const criticalAsset = (profile.personality.critical_asset || '').toLowerCase();
     const stage = (profile.stage || '').toLowerCase();
 
-    // 2. Contextual Chart Logic (The "Smart Logic")
-    let localMode = globalMode;
-
-    if (criticalAsset === 'durian' || stage === 'bloom' || stage === 'pollination') {
-        localMode = 'vpd';
-    } else if (profile.personality.sensitivity_flood > 7 || profile.soil.includes('clayey_filled')) {
-        localMode = 'rain';
-    } else if (criticalAsset === 'seedling') {
-        localMode = 'temp';
-    }
-
+    // 2. Contextual Chart Logic (The "Smart Logic" -> "Dumb Logic")
+    // [REF] Removed heuristic overrides to respect globalMode (User Command) 100%
+    const localMode = globalMode;
+    
     // Chart Data Preparation
     const forecasts = sitrep.environment.forecast;
     const labels = forecasts.map(f => f.date.split('T')[0].slice(5)); // MM-DD
@@ -267,29 +267,7 @@ function generatePlotComponents(sitrep: SITREP, globalMode: GlobalAnalysis['mode
         }
     }];
 
-    // 🔬 DYNAMIC INJECTION: Activity Table for requested plot (Focus)
-    if (sitrep.plot.id === 'suan_makham') {
-        const activityRows = sitrep.activities.recent.slice(0, 10).map(a => {
-            const dateStr = new Date(a.date).toLocaleDateString('th-TH', { 
-                day: '2-digit', 
-                month: '2-digit',
-                year: '2-digit'
-            });
-            return [dateStr, a.type.toUpperCase(), a.notes || '-'];
-        });
-
-        result.push({
-            type: 'TABLE_CARD',
-            id: `activity_table_${sitrep.plot.id}`,
-            colSpan: 4, // Full width for visibility
-            props: {
-                title: `📅 Activity History: ${sitrep.plot.id.toUpperCase()}`,
-                variant: 'simple',
-                headers: ['Date', 'Type', 'Notes'],
-                rows: activityRows
-            }
-        });
-    }
+    // 🔬 DYNAMIC INJECTION: Activity Table REMOVED (Legacy suan_makham logic)
 
     return result;
 }
