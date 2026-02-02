@@ -94,3 +94,23 @@ export interface SITREP {
         headlines: string[];
     };
 }
+
+// --- 5. THE SYSTEM (Holistic View) ---
+
+export interface GapAnalysis {
+    integrity: 'fresh' | 'stale' | 'critical';
+    last_update_hours: number;
+    missing_plots: string[];
+    external_search_needed: boolean;
+    notes: string[];
+}
+
+export interface SystemInsight {
+    timestamp: string;
+    meta: {
+        horizon_days: number;
+        focus: string[];
+    };
+    gap_analysis: GapAnalysis;
+    plots: Record<string, SITREP>;
+}
