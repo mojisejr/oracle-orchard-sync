@@ -6,12 +6,107 @@
  * Zero business logic allowed here. Only presentation logic.
  */
 
-import { VisualComponent, MetricCard, ChartCard, TableCard, InsightCard, PlotHeaderCard, GaugeCard, ActionGuideCard, PlotCompositeCard } from '../types/visual-manifest';
+import { VisualComponent, MetricCard, ChartCard, TableCard, InsightCard, PlotHeaderCard, GaugeCard, ActionGuideCard, PlotCompositeCard, AdviceCard, HeadlessManifest } from '../types/visual-manifest';
 
 // --- MAIN FACTORY ---
 
+export function generatePageTemplate(manifest: HeadlessManifest, componentsHtml: string): string {
+    const themeColor = manifest.theme === 'emergency-red' ? 'text-rose-400' : 'text-emerald-400';
+    const borderTheme = manifest.theme === 'emergency-red' ? 'border-rose-500/20 bg-rose-500/10' : 'border-emerald-500/20 bg-emerald-500/10';
+
+    return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orchard Sight | Headless Monitor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'JetBrains Mono', monospace; background-color: #050505; }
+        .grid-bg { background-image: radial-gradient(#333 1px, transparent 1px); background-size: 20px 20px; opacity: 0.1; }
+    </style>
+</head>
+<body class="text-white min-h-screen relative overflow-x-hidden">
+    <div class="fixed inset-0 grid-bg pointer-events-none"></div>
+    
+    <div class="container mx-auto px-6 py-12 relative z-10">
+        <!-- HEADER -->
+        <header class="mb-12 flex justify-between items-end border-b border-white/10 pb-6">
+            <div>
+                <h1 class="text-4xl font-bold mb-2 tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">
+                    ORCHARD SIGHT
+                </h1>
+                <p class="text-white/40 text-sm">Target: ${manifest.summary} | Latency: 12ms</p>
+            </div>
+            <div class="text-right">
+                <div class="inline-flex items-center gap-2 px-3 py-1 ${borderTheme} rounded-full ${themeColor} text-xs font-bold uppercase tracking-widest animate-pulse">
+                    <span class="w-2 h-2 rounded-full bg-current"></span>
+                    System Online (${manifest.meta.version})
+                </div>
+            </div>
+        </header>
+
+        <!-- DASHBOARD GRID -->
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+            ${componentsHtml || '<div class="col-span-4 text-center text-white/30 py-20">No visual components received.</div>'}
+        </div>
+    </div>
+
+    <script>
+        // Init Charts (Dumb Client-Side Hydration)
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvases = document.querySelectorAll('canvas.component-chart');
+            canvases.forEach(canvas => {
+                const configStr = canvas.getAttribute('data-config');
+                if (!configStr) return;
+                
+                try {
+                    const props = JSON.parse(configStr);
+                    // Map Props to Chart.js Config
+                    new Chart(canvas, {
+                        type: props.chartType === 'mixed' ? 'bar' : props.chartType, 
+                        data: {
+                            labels: props.data.labels,
+                            datasets: props.data.datasets.map(ds => ({
+                                label: ds.label,
+                                data: ds.data,
+                                borderColor: ds.color || '#ffffff',
+                                backgroundColor: ds.color ? ds.color + '40' : '#ffffff20',
+                                borderWidth: 2,
+                                tension: 0.4,
+                                type: ds.type || undefined,
+                                yAxisID: ds.yAxisID || 'y',
+                                fill: ds.fill
+                            }))
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: true, labels: { color: '#ffffff50', font: { family: 'JetBrains Mono' } } }
+                            },
+                            scales: {
+                                x: { grid: { color: '#ffffff10' }, ticks: { color: '#ffffff50' } },
+                                y: { grid: { color: '#ffffff10' }, ticks: { color: '#ffffff50' } }
+                            }
+                        }
+                    });
+                } catch (e) {
+                    console.error('Chart hydration failed', e);
+                }
+            });
+        });
+    </script>
+</body>
+</html>`;
+}
+
 export function renderComponent(comp: VisualComponent): string {
     switch (comp.type) {
+        case 'ADVICE_CARD': return renderAdvice(comp as AdviceCard);
         case 'PLOT_COMPOSITE': return renderPlotComposite(comp as PlotCompositeCard);
         case 'METRIC_CARD': return renderMetric(comp as MetricCard);
         case 'CHART': return renderChartContainer(comp as ChartCard); // Just the container + config script
@@ -221,5 +316,59 @@ function renderActionGuide(comp: ActionGuideCard): string {
                 </div>
             `).join('')}
         </div>
+    </div>`;
+}
+
+function renderAdvice(comp: AdviceCard): string {
+    const { title, author, content, sentiment } = comp.props;
+    
+    // Theme Colors
+    let borderClass = 'border-purple-500/30';
+    let bgClass = 'bg-purple-900/10';
+    let textClass = 'text-purple-200';
+    let icon = '🧞‍♂️';
+
+    if (sentiment === 'caution') {
+        borderClass = 'border-amber-500/30';
+        bgClass = 'bg-amber-900/10';
+        textClass = 'text-amber-200';
+        icon = '⚠️';
+    } else if (sentiment === 'positive') {
+        borderClass = 'border-emerald-500/30';
+        bgClass = 'bg-emerald-900/10';
+        textClass = 'text-emerald-200';
+        icon = '✅';
+    }
+
+    // Parse simple markdown
+    let htmlContent = content
+        .replace(/\*\*(.*?)\*\*/g, '<strong class="text-white">$1</strong>')
+        .split('\n').map(line => {
+            if (line.trim().startsWith('- ')) {
+                return `<li class="ml-4 list-disc opacity-90">${line.replace('- ', '')}</li>`;
+            }
+            return `<p class="mb-2">${line}</p>`;
+        }).join('');
+
+    return `
+    <div class="${getColClass(comp.colSpan)} p-6 rounded-2xl border ${borderClass} ${bgClass} relative overflow-hidden backdrop-blur-md">
+        <!-- HEADER -->
+        <div class="flex justify-between items-start mb-4">
+            <div class="flex items-center gap-3">
+                <div class="text-2xl filter drop-shadow-md">${icon}</div>
+                <div>
+                    <h3 class="font-bold text-lg text-white tracking-wide">${title}</h3>
+                    ${author ? `<p class="text-[10px] uppercase tracking-widest opacity-50">Voice of ${author}</p>` : ''}
+                </div>
+            </div>
+        </div>
+
+        <!-- CONTENT -->
+        <div class="text-sm ${textClass} leading-relaxed font-mono">
+            ${htmlContent}
+        </div>
+
+        <!-- DECORATION -->
+        <div class="absolute -top-10 -right-10 w-32 h-32 bg-white/5 rounded-full blur-2xl pointer-events-none"></div>
     </div>`;
 }

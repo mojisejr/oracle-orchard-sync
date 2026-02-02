@@ -25,6 +25,7 @@ export interface HeadlessManifest {
         generated_at: string; // ISO String
         horizon_days: number;
         version: string; // '1.0'
+        generator_agent?: string;
     };
 }
 
@@ -38,7 +39,8 @@ export type VisualComponent =
     | TableCard 
     | InsightCard 
     | ActionGuideCard
-    | PlotHeaderCard;
+    | PlotHeaderCard
+    | AdviceCard; // NEW: AI-Driven Advice
 
 export type ComponentType = VisualComponent['type'];
 
@@ -199,5 +201,20 @@ export interface ActionGuideCard extends BaseComponent {
             checked?: boolean; // For display purposes
             priority?: 'high' | 'normal';
         }[];
+    };
+}
+
+/**
+ * ADVICE: Direct recommendations from AI (Oracle)
+ * Supports Markdown-like synthesis
+ */
+export interface AdviceCard extends BaseComponent {
+    type: 'ADVICE_CARD';
+    props: {
+        title: string;
+        /** The Oracle's voice/persona (e.g., "Orchard Sage") */
+        author?: string;
+        content: string; // Supports simple markdown (bold, list)
+        sentiment?: 'neutral' | 'positive' | 'caution';
     };
 }

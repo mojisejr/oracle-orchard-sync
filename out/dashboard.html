@@ -23,12 +23,12 @@
                 <h1 class="text-4xl font-bold mb-2 tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">
                     ORCHARD SIGHT
                 </h1>
-                <p class="text-white/40 text-sm">Target: AI Dashboard: VPD & Spray Guide | Latency: 12ms</p>
+                <p class="text-white/40 text-sm">Target: CRITICAL ALERT: DROUGHT | Latency: 12ms</p>
             </div>
             <div class="text-right">
-                <div class="inline-flex items-center gap-2 px-3 py-1 border-emerald-500/20 bg-emerald-500/10 rounded-full text-emerald-400 text-xs font-bold uppercase tracking-widest animate-pulse">
+                <div class="inline-flex items-center gap-2 px-3 py-1 border-rose-500/20 bg-rose-500/10 rounded-full text-rose-400 text-xs font-bold uppercase tracking-widest animate-pulse">
                     <span class="w-2 h-2 rounded-full bg-current"></span>
-                    System Online (AI-Driven-v1)
+                    System Online (1.0.0)
                 </div>
             </div>
         </header>
@@ -36,63 +36,39 @@
         <!-- DASHBOARD GRID -->
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
             
-    <div class="col-span-4 p-4 rounded-xl border bg-blue-500/10 border-blue-500/20">
-        <h3 class="font-bold text-blue-200 mb-2 flex items-center gap-2">
-            ℹ️ 💡 คำแนะนำการพ่นยา (7 วันข้างหน้า)
-        </h3>
-        <ul class="space-y-1">
-            <li class="text-sm text-white/80 list-disc list-inside">✅ ช่วงที่ดีที่สุด: 5-7 ก.พ. (VPD < 1.0) อากาศชื้นขึ้น ยาดูดซึมได้ดี ไม่ระเหยเร็ว</li><li class="text-sm text-white/80 list-disc list-inside">❌ เลี่ยงช่วง: 2-4 ก.พ. (VPD สูง 1.3-1.4) เสี่ยงใบไหม้ (Phytotoxicity) จากอากาศแห้งจัด</li><li class="text-sm text-white/80 list-disc list-inside">⚠️ ระวัง: 8 ก.พ. มีพยากรณ์ฝน 10.5mm อาจชะล้างยาที่พ่นไปได้</li>
-        </ul>
-    </div>
-
-    <div class="col-span-2 bg-white/5 border border-white/10 rounded-2xl p-6 hover:border-white/20 transition-all backdrop-blur-xl group relative overflow-hidden">
-        <!-- HEADER ROW -->
-        <div class="flex justify-between items-start mb-6 relative z-10">
-            <div>
-                <h2 class="text-2xl font-bold text-white mb-1 uppercase tracking-widest leading-none">สวนมะขาม (Durian Focus)</h2>
-                <div class="flex flex-wrap gap-2 mt-2">
-                    <span class="px-2 py-0.5 text-[10px] uppercase font-bold bg-emerald-500/10 text-emerald-400 rounded-sm border border-emerald-500/20 tracking-wider">
-                        Bloom/Pollination
-                    </span>
-                    <span class="px-2 py-0.5 text-[10px] uppercase font-bold bg-blue-500/10 text-blue-400 rounded-sm border border-blue-500/20 tracking-wider">VPD Stress Monitor</span>
+    <div class="col-span-1 p-6 rounded-2xl border border-amber-500/30 bg-amber-900/10 relative overflow-hidden backdrop-blur-md">
+        <!-- HEADER -->
+        <div class="flex justify-between items-start mb-4">
+            <div class="flex items-center gap-3">
+                <div class="text-2xl filter drop-shadow-md">⚠️</div>
+                <div>
+                    <h3 class="font-bold text-lg text-white tracking-wide">Drought Protocol Activated</h3>
+                    
                 </div>
             </div>
-            <div class="text-right">
-                <div class="text-3xl font-light text-white leading-none">1.42</div>
-                <div class="text-[10px] text-white/40 uppercase tracking-widest mt-1">Max VPD (3d)</div>
-            </div>
         </div>
 
-        <!-- HERO CHART -->
-        <div class="chart-container h-48 w-full mb-6 relative z-10">
-            <canvas id="vpd_makham" class="component-chart" data-config='{"chartType":"line","data":{"labels":["02/02","02/03","02/04","02/05","02/06","02/07","02/08"],"datasets":[{"label":"VPD (kPa)","data":[1.27,1.29,1.42,0.82,0.79,0.42,0.34],"color":"#10b981","fill":true}]}}'></canvas>
+        <!-- CONTENT -->
+        <div class="text-sm text-amber-200 leading-relaxed font-mono">
+            <p class="mb-2"></p><p class="mb-2">### ⚠️ Critical Water Deficit</p><p class="mb-2">Current moisture levels are <strong class="text-white">20% below target</strong>. </p><p class="mb-2"></p><p class="mb-2"><strong class="text-white">Recommended Actions:</strong></p><li class="ml-4 list-disc opacity-90">[ ] Activate Auxiliary Pump A</li><li class="ml-4 list-disc opacity-90">[ ] Reduce irrigation interval to 4 hours</li><li class="ml-4 list-disc opacity-90">[ ] Inspect localized drip lines for blockages</li><p class="mb-2">                </p>
         </div>
 
-        <!-- FOOTER / ACTIVITY -->
-        <div class="relative z-10 border-t border-white/5 pt-4">
-             <div class="flex justify-between items-center mb-2">
-                <h4 class="text-[10px] font-bold text-white/30 uppercase tracking-widest">7-Day VPD Trend</h4>
-             </div>
-             
-             <div class="space-y-2 mt-4">
-                
-                    <div class="flex items-start gap-2 text-xs text-white/60">
-                        <span class="mt-1.5 w-1 h-1 rounded-full bg-emerald-500/50"></span>
-                        <span class="font-mono text-white/30">02/02</span>
-                        <span class="truncate">ให้น้ำ 40 นาที</span>
-                    </div>
-                
-             </div>
-        </div>
-
-        <!-- DECORATIVE BG -->
-        <div class="absolute -bottom-10 -right-10 w-40 h-40 bg-gradient-to-br from-emerald-500/5 to-blue-500/5 rounded-full blur-3xl pointer-events-none"></div>
+        <!-- DECORATION -->
+        <div class="absolute -top-10 -right-10 w-32 h-32 bg-white/5 rounded-full blur-2xl pointer-events-none"></div>
     </div>
 
-    <div class="col-span-2 p-6 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-sm relative group">
-        <h4 class="text-xs font-bold text-white/40 uppercase mb-4 tracking-widest">ความเสี่ยงฝนชะล้าง</h4>
+    <div class="col-span-1 p-6 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-sm relative group">
+        <h4 class="text-xs font-bold text-white/40 uppercase mb-4 tracking-widest">Soil Moisture Trends</h4>
         <div class="h-64 w-full">
-            <canvas id="rain_risk" class="component-chart" data-config='{"title":"ความเสี่ยงฝนชะล้าง","chartType":"bar","data":{"labels":["02/02","02/03","02/04","02/05","02/06","02/07","02/08"],"datasets":[{"label":"Rainfall (mm)","data":[0,0,0,0,1.2,1.1,10.5],"color":"#3b82f6"}]}}'></canvas>
+            <canvas id="chart-main" class="component-chart" data-config='{"title":"Soil Moisture Trends","chartType":"line","data":{"labels":["06:00","09:00","12:00","15:00","18:00","21:00","NOW"],"datasets":[{"label":"Moisture (%)","data":[30,28,25,22,20,18,15],"color":"#f87171","fill":true}]}}'></canvas>
+        </div>
+    </div>
+
+    <div class="col-span-1 p-6 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-colors">
+        <div class="text-sm text-white/40 uppercase tracking-widest mb-1">Pump Efficiency</div>
+        <div class="flex items-baseline gap-1">
+            <span class="text-3xl font-light text-white">98.5</span>
+            <span class="text-sm text-white/40">%</span>
         </div>
     </div>
         </div>
