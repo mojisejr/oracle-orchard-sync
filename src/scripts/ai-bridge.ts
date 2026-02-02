@@ -76,7 +76,21 @@ async function main() {
 
                 // B. Component Injection
                 if (override.components && Array.isArray(override.components)) {
-                    injectedComponents = override.components;
+                    injectedComponents = override.components.map((c: any) => {
+                         // 🛡️ Auto-fix for Schema Blindness (Missing props wrapper)
+                         // If AI forgets 'props' wrapper but provides flat properties, we normalize it here.
+                         if (!c.props && c.type) {
+                             const { type, id, colSpan, ...potentialProps } = c;
+                             console.warn(`⚠️ Auto-Patching Component Schema for ${type}`);
+                             return { 
+                                 type, 
+                                 id: id || `injected-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`, 
+                                 colSpan: colSpan || 1, 
+                                 props: potentialProps 
+                             };
+                         }
+                         return c;
+                    });
                 }
 
                 // C. Mode Override
