@@ -21,9 +21,14 @@ interface GenerationContext {
 
 // --- PATTERN MATCHER ENGINE ---
 
-export function generateManifest(data: GenerationContext['system'], filterPlotId?: string): HeadlessManifest {
+export function generateManifest(data: GenerationContext['system'], filterPlotId?: string, forceMode?: GlobalAnalysis['mode']): HeadlessManifest {
     // 1. Analyze Global Context (Aggregated)
     const context = analyzeGlobalContext(data);
+
+    // Override mode if forced
+    if (forceMode && forceMode !== 'default') {
+        context.mode = forceMode;
+    }
 
     // 2. Determine Theme & Layout
     const theme = context.isEmergency ? 'emergency-red' : 

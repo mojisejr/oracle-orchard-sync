@@ -57,11 +57,12 @@ async function readStdin(): Promise<string> {
 
 async function main() {
     const args = minimist(process.argv.slice(2), {
-        string: ['plot'],
+        string: ['plot', 'mode'],
         boolean: ['manual'], // Enable manual overrides
         default: {
             days: 3,
             plot: 'all',
+            mode: 'default',
             manual: false
         }
     });
@@ -106,7 +107,7 @@ async function main() {
     // 3. Generate Manifest (Visual)
     // If single plot is filtered, we pass it to generateManifest to optimize focus
     const filterPlot = requestedPlots.length === 1 ? requestedPlots[0] : undefined;
-    const manifest = generateManifest(context, filterPlot);
+    const manifest = generateManifest(context, filterPlot, args.mode as any);
 
     // 4. Output
     console.log(JSON.stringify(manifest, null, 2));
