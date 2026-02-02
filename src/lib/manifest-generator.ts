@@ -97,28 +97,13 @@ interface GlobalAnalysis {
 }
 
 function analyzeGlobalContext(data: GenerationContext['system']): GlobalAnalysis {
-    // Default State
     let mode: GlobalAnalysis['mode'] = 'default';
     let headline = "Orchard Overview";
     const bullets: string[] = [];
     let isEmergency = false;
 
     // Scan all plots for critical signals
-    const plots = Object.values(data.plots);
-    
-    // Aggregates (Unused in Dumb Mode)
-    // let maxRain = 0;
-    // let maxVPD = 0;
-    
-    plots.forEach(p => {
-        // const fc = p.environment.forecast;
-        // const localMaxRain = Math.max(...fc.map(d => d.rainMm || 0));
-        // const localMaxVPD = Math.max(...fc.map(d => d.vpd || 0));
-        
-        // if (localMaxRain > maxRain) maxRain = localMaxRain;
-        // if (localMaxVPD > maxVPD) maxVPD = localMaxVPD;
-
-        // CHECK BRAIN INSIGHT (Reflex/Manual Override)
+    Object.values(data.plots).forEach(p => {
         if (p.insight?.status === 'critical') {
             isEmergency = true;
             headline = `🚨 ${p.insight.headlines[0] || 'CRITICAL ALERT'}`;
@@ -126,33 +111,13 @@ function analyzeGlobalContext(data: GenerationContext['system']): GlobalAnalysis
         }
     });
 
-    // Pattern Matching (DEPRECATED: Dumb Renderer)
-    // Removed automatic mode switching based on thresholds.
-    // Mode is now exclusively controlled by arguments or default.
-    /*
-    if (isEmergency) {
-        mode = 'rain'; // Default to rain/emergency view
-    } else if (maxRain > 50) { // Threshold 50mm
-        mode = 'rain';
-        headline = `⚠ Heavy Rain Alert (${maxRain}mm detected)`;
-        isEmergency = true;
-        bullets.push(`High precipitation expected in next 3 days.`);
-    } 
-    // 2. High VPD / Drought
-    else if (maxVPD > 2.0) {
-        mode = 'vpd';
-        headline = `High Transpiration Rate (VPD ${maxVPD.toFixed(2)} kPa)`;
-        bullets.push(`Monitor irrigation closely. High water demand.`);
-    }
-    */
-
     return {
         isEmergency,
-        isDrought: false, // Deprecated logic
+        isDrought: false,
         isMobile: false,
         headline,
         bulletPoints: bullets.length > 0 ? bullets : ['Conditions are nominal.'],
-        mode // Always default unless overridden by forceMode in main function
+        mode 
     };
 }
 

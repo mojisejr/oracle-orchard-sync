@@ -9,13 +9,12 @@
 import minimist from 'minimist';
 import { loadSystemContext } from '../lib/context-loader';
 import { generateManifest } from '../lib/manifest-generator';
-import { SITREP } from '../types/orchard-core';
 
-// --- REFLEX LOGIC (Phase 4) ---
-// [DEPRECATED] Heuristics removed to ensure Dumb Renderer architecture.
+// --- REFLEX LOGIC ---
+
 // Logic is now upstream (Supabase/AI) or downstream (User Command).
 
-// --- STD-IN READER (Phase 5) ---
+// --- STD-IN READER ---
 
 async function readStdin(): Promise<string> {
     const { stdin } = process;
@@ -55,12 +54,7 @@ async function main() {
 
     // 2. Apply Logic (Brain)
     
-    // 2.a Heuristics (Reflexes) - DEPRECATED
-    // Object.values(context.plots).forEach(sitrep => {
-    //     applyHeuristics(sitrep);
-    // });
-
-    // 2.b Manual Override (Oracle Interface Phase 5 -> Phase 3 Integration)
+    // 2.a Manual Override (Oracle Interface)
     // Checks if STDIN has JSON payload to override insights OR inject components
     let injectedComponents: any[] = [];
     let overrideMode: any = null;
