@@ -28,7 +28,7 @@
             <div class="text-right">
                 <div class="inline-flex items-center gap-2 px-3 py-1 border-emerald-500/20 bg-emerald-500/10 rounded-full text-emerald-400 text-xs font-bold uppercase tracking-widest animate-pulse">
                     <span class="w-2 h-2 rounded-full bg-current"></span>
-                    System Online (2.1-headless)
+                    System Online (2.1-headless-dumb)
                 </div>
             </div>
         </header>
@@ -41,7 +41,7 @@
             ℹ️ Orchard Overview
         </h3>
         <ul class="space-y-1">
-            <li class="text-sm text-white/80 list-disc list-inside">Conditions are nominal for the next 4 days.</li>
+            <li class="text-sm text-white/80 list-disc list-inside">Conditions are nominal.</li>
         </ul>
     </div>
 
@@ -65,13 +65,13 @@
 
         <!-- HERO CHART -->
         <div class="chart-container h-48 w-full mb-6 relative z-10">
-            <canvas id="plot_suan_ban" class="component-chart" data-config='{"chartType":"mixed","data":{"labels":["02-02","02-03","02-04","02-05"],"datasets":[{"label":"Max Temp","data":[29.71,30,30.46,27.99],"color":"#6366f1","type":"line"},{"label":"Rain %","data":[0,0,0,0],"color":"#3b82f6","type":"bar"}]}}'></canvas>
+            <canvas id="plot_suan_ban" class="component-chart" data-config='{"chartType":"line","data":{"labels":["02-02","02-03","02-04","02-05","02-06","02-07","02-08"],"datasets":[{"label":"VPD (kPa)","data":[1.15,1.23,1.25,0.49,0.62,0.42,0.29],"color":"#10b981","fill":true}]}}'></canvas>
         </div>
 
         <!-- FOOTER / ACTIVITY -->
         <div class="relative z-10 border-t border-white/5 pt-4">
              <div class="flex justify-between items-center mb-2">
-                <h4 class="text-[10px] font-bold text-white/30 uppercase tracking-widest">General Forecast</h4>
+                <h4 class="text-[10px] font-bold text-white/30 uppercase tracking-widest">VPD & Stress Index</h4>
              </div>
              
              <div class="space-y-2 mt-4">
@@ -108,20 +108,20 @@
                 </div>
             </div>
             <div class="text-right">
-                <div class="text-3xl font-light text-white leading-none">4.9</div>
-                <div class="text-[10px] text-white/40 uppercase tracking-widest mt-1">Rain (3d)</div>
+                <div class="text-3xl font-light text-white leading-none">16.3</div>
+                <div class="text-[10px] text-white/40 uppercase tracking-widest mt-1">Daily GDD</div>
             </div>
         </div>
 
         <!-- HERO CHART -->
         <div class="chart-container h-48 w-full mb-6 relative z-10">
-            <canvas id="plot_suan_lang" class="component-chart" data-config='{"chartType":"mixed","data":{"labels":["02-02","02-03","02-04","02-05"],"datasets":[{"label":"Rain (mm)","data":[0,0,0,4.9],"color":"#3b82f6","type":"bar"},{"label":"ETo (mm)","data":[10.49,10.86,10.85,9.09],"color":"#f59e0b","type":"line"}]}}'></canvas>
+            <canvas id="plot_suan_lang" class="component-chart" data-config='{"chartType":"line","data":{"labels":["02-02","02-03","02-04","02-05","02-06","02-07","02-08"],"datasets":[{"label":"VPD (kPa)","data":[1.42,1.42,1.41,0.72,0.74,0.68,0.38],"color":"#10b981","fill":true}]}}'></canvas>
         </div>
 
         <!-- FOOTER / ACTIVITY -->
         <div class="relative z-10 border-t border-white/5 pt-4">
              <div class="flex justify-between items-center mb-2">
-                <h4 class="text-[10px] font-bold text-white/30 uppercase tracking-widest">Precipitation & Flood Risk</h4>
+                <h4 class="text-[10px] font-bold text-white/30 uppercase tracking-widest">VPD & Stress Index</h4>
              </div>
              
              <div class="space-y-2 mt-4">
@@ -165,7 +165,7 @@
 
         <!-- HERO CHART -->
         <div class="chart-container h-48 w-full mb-6 relative z-10">
-            <canvas id="plot_suan_makham" class="component-chart" data-config='{"chartType":"line","data":{"labels":["02-02","02-03","02-04","02-05"],"datasets":[{"label":"VPD (kPa)","data":[1.27,1.29,1.42,0.82],"color":"#10b981","fill":true}]}}'></canvas>
+            <canvas id="plot_suan_makham" class="component-chart" data-config='{"chartType":"line","data":{"labels":["02-02","02-03","02-04","02-05","02-06","02-07","02-08"],"datasets":[{"label":"VPD (kPa)","data":[1.27,1.29,1.42,0.82,0.79,0.42,0.34],"color":"#10b981","fill":true}]}}'></canvas>
         </div>
 
         <!-- FOOTER / ACTIVITY -->
@@ -195,44 +195,6 @@
         <div class="absolute -bottom-10 -right-10 w-40 h-40 bg-gradient-to-br from-emerald-500/5 to-blue-500/5 rounded-full blur-3xl pointer-events-none"></div>
     </div>
 
-    <div class="col-span-4 p-0 bg-white/5 border border-white/10 rounded-2xl overflow-hidden backdrop-blur-sm mt-4">
-        <div class="px-6 py-4 border-b border-white/5 bg-white/5 flex justify-between items-center">
-            <h4 class="text-xs font-bold text-white/50 uppercase tracking-widest">📅 Activity History: SUAN_MAKHAM</h4>
-        </div>
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm text-left">
-                <thead class="text-xs text-white/40 uppercase bg-white/5">
-                    <tr>
-                        <th class="px-6 py-3 font-medium tracking-wider">Date</th><th class="px-6 py-3 font-medium tracking-wider">Type</th><th class="px-6 py-3 font-medium tracking-wider">Notes</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-white/5">
-                    
-                        <tr class="hover:bg-white/5 transition-colors">
-                            <td class="px-6 py-4 text-white/70 whitespace-nowrap font-mono text-xs">02/02/69</td><td class="px-6 py-4 text-white/70 whitespace-nowrap font-mono text-xs">WATERING</td><td class="px-6 py-4 text-white/70 whitespace-nowrap font-mono text-xs">ให้น้ำ 40 นาที</td>
-                        </tr>
-                    
-                        <tr class="hover:bg-white/5 transition-colors">
-                            <td class="px-6 py-4 text-white/70 whitespace-nowrap font-mono text-xs">01/02/69</td><td class="px-6 py-4 text-white/70 whitespace-nowrap font-mono text-xs">OTHER</td><td class="px-6 py-4 text-white/70 whitespace-nowrap font-mono text-xs">ปัดดอกทุเรียน (Hand Pollination) - กำหนดแก่ 110 วัน (2026-05-22)</td>
-                        </tr>
-                    
-                        <tr class="hover:bg-white/5 transition-colors">
-                            <td class="px-6 py-4 text-white/70 whitespace-nowrap font-mono text-xs">31/01/69</td><td class="px-6 py-4 text-white/70 whitespace-nowrap font-mono text-xs">OTHER</td><td class="px-6 py-4 text-white/70 whitespace-nowrap font-mono text-xs">ยังไม่ทราบกำหนดวัน: ต้องตัดหญ้าที่สวนมะขาม</td>
-                        </tr>
-                    
-                        <tr class="hover:bg-white/5 transition-colors">
-                            <td class="px-6 py-4 text-white/70 whitespace-nowrap font-mono text-xs">30/01/69</td><td class="px-6 py-4 text-white/70 whitespace-nowrap font-mono text-xs">OTHER</td><td class="px-6 py-4 text-white/70 whitespace-nowrap font-mono text-xs">ปัดดอกมะขามวันนี้ (Hand Pollination) กำหนดแก่ในอีก 110 วัน (2026-05-20)</td>
-                        </tr>
-                    
-                        <tr class="hover:bg-white/5 transition-colors">
-                            <td class="px-6 py-4 text-white/70 whitespace-nowrap font-mono text-xs">30/01/69</td><td class="px-6 py-4 text-white/70 whitespace-nowrap font-mono text-xs">FERTILIZING</td><td class="px-6 py-4 text-white/70 whitespace-nowrap font-mono text-xs">ปุ๋ยตราเขาแก้ว สูตร 9-3-3 ใส่เฉพาะต้นที่ไม่ออกดอก และต้นเล็ก ประมาณ 3 กำมือต่อต้น (100-200g)</td>
-                        </tr>
-                    
-                </tbody>
-            </table>
-        </div>
-    </div>
-
     <div class="col-span-1 bg-white/5 border border-white/10 rounded-2xl p-6 hover:border-white/20 transition-all backdrop-blur-xl group relative overflow-hidden">
         <!-- HEADER ROW -->
         <div class="flex justify-between items-start mb-6 relative z-10">
@@ -253,13 +215,13 @@
 
         <!-- HERO CHART -->
         <div class="chart-container h-48 w-full mb-6 relative z-10">
-            <canvas id="plot_plant_shop" class="component-chart" data-config='{"chartType":"mixed","data":{"labels":["02-02","02-03","02-04","02-05"],"datasets":[{"label":"Max Temp","data":[29.71,30,30.46,27.99],"color":"#6366f1","type":"line"},{"label":"Rain %","data":[0,0,0,0],"color":"#3b82f6","type":"bar"}]}}'></canvas>
+            <canvas id="plot_plant_shop" class="component-chart" data-config='{"chartType":"line","data":{"labels":["02-02","02-03","02-04","02-05","02-06","02-07","02-08"],"datasets":[{"label":"VPD (kPa)","data":[1.15,1.23,1.25,0.49,0.62,0.42,0.29],"color":"#10b981","fill":true}]}}'></canvas>
         </div>
 
         <!-- FOOTER / ACTIVITY -->
         <div class="relative z-10 border-t border-white/5 pt-4">
              <div class="flex justify-between items-center mb-2">
-                <h4 class="text-[10px] font-bold text-white/30 uppercase tracking-widest">General Forecast</h4>
+                <h4 class="text-[10px] font-bold text-white/30 uppercase tracking-widest">VPD & Stress Index</h4>
              </div>
              
              <div class="space-y-2 mt-4">

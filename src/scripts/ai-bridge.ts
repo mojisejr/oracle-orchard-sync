@@ -60,20 +60,36 @@ async function main() {
     //     applyHeuristics(sitrep);
     // });
 
-    // 2.b Manual Override (Oracle Interface Phase 5)
-    // Checks if STDIN has JSON payload to override insights
+    // 2.b Manual Override (Oracle Interface Phase 5 -> Phase 3 Integration)
+    // Checks if STDIN has JSON payload to override insights OR inject components
+    let injectedComponents: any[] = [];
+    let overrideMode: any = null;
+
     if (args.manual) {
         const input = await readStdin();
         if (input) {
             try {
                 const override = JSON.parse(input);
-                // Expecting { status: '...', headlines: [...] }
-                // Apply to ALL plots in context for now (Global Broadcast)
-                Object.values(context.plots).forEach(sitrep => {
-                     if (override.status) sitrep.insight!.status = override.status;
-                     if (override.headlines) sitrep.insight!.headlines = override.headlines;
-                     // Optional: Inject custom content if needed later
-                });
+                // Expecting { status: '...', headlines: [...], components: [...], mode: '...' }
+                
+                // A. Insight Override
+                if (override.status || override.headlines) {
+                    Object.values(context.plots).forEach(sitrep => {
+                        if (override.status) sitrep.insight!.status = override.status;
+                        if (override.headlines) sitrep.insight!.headlines = override.headlines;
+                    });
+                }
+
+                // B. Component Injection
+                if (override.components && Array.isArray(override.components)) {
+                    injectedComponents = override.components;
+                }
+
+                // C. Mode Override
+                if (override.mode) {
+                    overrideMode = override.mode;
+                }
+
             } catch (e) {
                 console.warn('⚠️ Failed to parse Manual Input:', e);
             }
@@ -82,8 +98,12 @@ async function main() {
 
     // 3. Generate Manifest (Visual)
     // If single plot is filtered, we pass it to generateManifest to optimize focus
+    // Priority: Override Mode > CLI Arg Mode > Default
+    const finalMode = overrideMode || args.mode;
     const filterPlot = requestedPlots.length === 1 ? requestedPlots[0] : undefined;
-    const manifest = generateManifest(context, filterPlot, args.mode as any);
+    
+    const manifest = generateManifest(context, filterPlot, finalMode as any, injectedComponents);
+
 
     // 4. Output
     console.log(JSON.stringify(manifest, null, 2));

@@ -21,7 +21,7 @@ interface GenerationContext {
 
 // --- PATTERN MATCHER ENGINE ---
 
-export function generateManifest(data: GenerationContext['system'], filterPlotId?: string, forceMode?: GlobalAnalysis['mode']): HeadlessManifest {
+export function generateManifest(data: GenerationContext['system'], filterPlotId?: string, forceMode?: GlobalAnalysis['mode'], injectedComponents?: VisualComponent[]): HeadlessManifest {
     // 1. Analyze Global Context (Aggregated)
     const context = analyzeGlobalContext(data);
 
@@ -61,6 +61,12 @@ export function generateManifest(data: GenerationContext['system'], filterPlotId
         const plotComponents = generatePlotComponents(sitrep, context.mode);
         components.push(...plotComponents);
     });
+    
+    // 3.3 Injected Components (Oracle Designer)
+    if (injectedComponents && injectedComponents.length > 0) {
+        components.push(...injectedComponents);
+    }
+
 
     // Calculate Dynamic Horizon
     const firstPlot = Object.values(data.plots)[0];
