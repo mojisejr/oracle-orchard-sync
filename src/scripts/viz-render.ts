@@ -35,7 +35,7 @@ async function main() {
         manifest = generateManifest({
             timestamp: payload.data.timestamp,
             plots: payload.data.plots
-        });
+        }, args.plot);
     } else {
         manifest = payload.data;
         console.log('✅ Received Headless Manifest (Phase 3 Native).');

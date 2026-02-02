@@ -1,0 +1,327 @@
+
+> orchard-sync@1.0.0 synthesize
+> ts-node src/scripts/synthesize-insights.ts --json --manifest --days=7
+
+{
+  "summary": "Orchard Overview",
+  "theme": "drought-orange",
+  "layout": "dashboard-v1",
+  "visual_manifest": [
+    {
+      "type": "INSIGHT_CARD",
+      "id": "global_summary",
+      "colSpan": 4,
+      "props": {
+        "title": "Orchard Overview",
+        "severity": "info",
+        "messages": [
+          "Conditions are nominal."
+        ]
+      }
+    },
+    {
+      "type": "PLOT_COMPOSITE",
+      "id": "plot_suan_ban",
+      "colSpan": 1,
+      "props": {
+        "plotName": "suan_ban",
+        "stage": "bloom",
+        "tags": [
+          "showcase",
+          "loamy_sandy"
+        ],
+        "primaryMetric": {
+          "label": "Daily GDD",
+          "value": "14.4"
+        },
+        "heroChart": {
+          "title": "VPD & Stress Index",
+          "desc": "Transpiration Monitor",
+          "config": {
+            "chartType": "line",
+            "data": {
+              "labels": [
+                "02-01",
+                "02-02",
+                "02-03",
+                "02-04",
+                "02-05",
+                "02-06",
+                "02-07"
+              ],
+              "datasets": [
+                {
+                  "label": "VPD (kPa)",
+                  "data": [
+                    1.29,
+                    1.15,
+                    1.23,
+                    1.25,
+                    0.49,
+                    0.62,
+                    0.42
+                  ],
+                  "color": "#10b981",
+                  "fill": true
+                }
+              ]
+            }
+          }
+        },
+        "recentActivities": [
+          {
+            "date": "2026-01-31T02:02:03.238603+00:00",
+            "note": ""
+          },
+          {
+            "date": "2026-01-29T01:22:03.131037+00:00",
+            "note": "ให้น้ำ + แปลงพันธุ์ไม้"
+          }
+        ]
+      }
+    },
+    {
+      "type": "PLOT_COMPOSITE",
+      "id": "plot_suan_lang",
+      "colSpan": 1,
+      "props": {
+        "plotName": "suan_lang",
+        "stage": "bloom",
+        "tags": [
+          "mangosteen",
+          "clayey_filled"
+        ],
+        "primaryMetric": {
+          "label": "Daily GDD",
+          "value": "15.8"
+        },
+        "heroChart": {
+          "title": "VPD & Stress Index",
+          "desc": "Transpiration Monitor",
+          "config": {
+            "chartType": "line",
+            "data": {
+              "labels": [
+                "02-01",
+                "02-02",
+                "02-03",
+                "02-04",
+                "02-05",
+                "02-06",
+                "02-07"
+              ],
+              "datasets": [
+                {
+                  "label": "VPD (kPa)",
+                  "data": [
+                    1.52,
+                    1.42,
+                    1.42,
+                    1.41,
+                    0.72,
+                    0.74,
+                    0.68
+                  ],
+                  "color": "#10b981",
+                  "fill": true
+                }
+              ]
+            }
+          }
+        },
+        "recentActivities": [
+          {
+            "date": "2026-01-31T02:01:59.941874+00:00",
+            "note": ""
+          },
+          {
+            "date": "2026-01-29T01:22:06.050683+00:00",
+            "note": "ให้น้ำ"
+          }
+        ]
+      }
+    },
+    {
+      "type": "PLOT_COMPOSITE",
+      "id": "plot_suan_makham",
+      "colSpan": 1,
+      "props": {
+        "plotName": "suan_makham",
+        "stage": "bloom",
+        "tags": [
+          "durian",
+          "sandy"
+        ],
+        "primaryMetric": {
+          "label": "Daily GDD",
+          "value": "15.5"
+        },
+        "heroChart": {
+          "title": "VPD & Stress Index",
+          "desc": "Transpiration Monitor",
+          "config": {
+            "chartType": "line",
+            "data": {
+              "labels": [
+                "02-01",
+                "02-02",
+                "02-03",
+                "02-04",
+                "02-05",
+                "02-06",
+                "02-07"
+              ],
+              "datasets": [
+                {
+                  "label": "VPD (kPa)",
+                  "data": [
+                    1.39,
+                    1.27,
+                    1.29,
+                    1.42,
+                    0.82,
+                    0.79,
+                    0.42
+                  ],
+                  "color": "#10b981",
+                  "fill": true
+                }
+              ]
+            }
+          }
+        },
+        "recentActivities": [
+          {
+            "date": "2026-01-31T03:01:19.929544+00:00",
+            "note": "ยังไม่ทราบกำหนดวัน: ต้องตัดหญ้าที่สวนมะขาม"
+          },
+          {
+            "date": "2026-01-30T16:48:48.801117+00:00",
+            "note": "ปัดดอกมะขามวันนี้ (Hand Pollination) กำหนดแก่ในอีก 110 วัน (2026-05-20)"
+          }
+        ]
+      }
+    },
+    {
+      "type": "TABLE_CARD",
+      "id": "spray_table_suan_makham",
+      "colSpan": 1,
+      "props": {
+        "title": "📋 Spray Formula: Flower Stage (2 Feb)",
+        "variant": "simple",
+        "headers": [
+          "Type",
+          "Active Ingredient",
+          "Rate/200L",
+          "Target"
+        ],
+        "rows": [
+          [
+            "Insecticide",
+            "Emamectin Benzoate",
+            "150 cc",
+            "หนอนเจาะดอก"
+          ],
+          [
+            "Fungicide",
+            "Propineb",
+            "400 g",
+            "ราแอนแทรคโนส/Zinc"
+          ],
+          [
+            "Nutrient",
+            "Ca-B (Calcium Boron)",
+            "250 cc",
+            "บำรุงเกสร/ขั้วเหนียว"
+          ],
+          [
+            "Hormone",
+            "Seaweed Extract",
+            "200 cc",
+            "กันช็อค/ช่วยผสมเกสร"
+          ]
+        ]
+      }
+    },
+    {
+      "type": "PLOT_COMPOSITE",
+      "id": "plot_plant_shop",
+      "colSpan": 1,
+      "props": {
+        "plotName": "plant_shop",
+        "stage": "seedling",
+        "tags": [
+          "showcase",
+          "loamy_sandy"
+        ],
+        "primaryMetric": {
+          "label": "Daily GDD",
+          "value": "14.4"
+        },
+        "heroChart": {
+          "title": "General Forecast",
+          "desc": "Monitoring conditions",
+          "config": {
+            "chartType": "mixed",
+            "data": {
+              "labels": [
+                "02-01",
+                "02-02",
+                "02-03",
+                "02-04",
+                "02-05",
+                "02-06",
+                "02-07"
+              ],
+              "datasets": [
+                {
+                  "label": "Max Temp",
+                  "data": [
+                    30.01,
+                    29.71,
+                    30,
+                    30.46,
+                    27.99,
+                    28.98,
+                    28.52
+                  ],
+                  "color": "#6366f1",
+                  "type": "line"
+                },
+                {
+                  "label": "Rain %",
+                  "data": [
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "color": "#3b82f6",
+                  "type": "bar"
+                }
+              ]
+            }
+          }
+        },
+        "recentActivities": [
+          {
+            "date": "2026-01-25T06:59:53.032945+00:00",
+            "note": "ขนหมอนทองขายให้ร้านนับหนึ่งพันธุ์ไม้ 300 ต้น (ลดราคา 35 -> 32 บาท เนื่องจากลูกค้า feedback ว่าต้นไม้ไม่สวย) คราวหน้าต้องปรับปรุงเรื่องการคัดคุณภาพ"
+          },
+          {
+            "date": "2026-01-24T08:08:58.877112+00:00",
+            "note": "มีคนมาขนลองกอง 500 ต้น (ต้นละ 30 บาท). อากาศวันนี้แห้ง (39% RH) และลมแรง, แนะนำให้พรมน้ำแปลงที่เหลือเพื่อลดการคายน้ำจากการขยับต้นไม้ออก"
+          }
+        ]
+      }
+    }
+  ],
+  "meta": {
+    "generated_at": "2026-02-01T00:31:21.280Z",
+    "horizon_days": 3,
+    "version": "2.0-headless"
+  }
+}

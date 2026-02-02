@@ -6,19 +6,21 @@
  * Zero business logic allowed here. Only presentation logic.
  */
 
-import { VisualComponent, MetricCard, ChartCard, TableCard, InsightCard, PlotHeaderCard, GaugeCard, ActionGuideCard } from '../types/visual-manifest';
+import { VisualComponent, MetricCard, ChartCard, TableCard, InsightCard, PlotHeaderCard, GaugeCard, ActionGuideCard, PlotCompositeCard } from '../types/visual-manifest';
 
 // --- MAIN FACTORY ---
 
 export function renderComponent(comp: VisualComponent): string {
     switch (comp.type) {
+        case 'PLOT_COMPOSITE': return renderPlotComposite(comp as PlotCompositeCard);
         case 'METRIC_CARD': return renderMetric(comp as MetricCard);
         case 'CHART': return renderChartContainer(comp as ChartCard); // Just the container + config script
+        case 'TABLE_CARD': return renderTable(comp as TableCard);
         case 'INSIGHT_CARD': return renderInsight(comp as InsightCard);
         case 'PLOT_HEADER': return renderPlotHeader(comp as PlotHeaderCard);
-        case 'METRIC_CARD': return renderMetric(comp as MetricCard); // Duplicate case removed in transpilation, but for clarity
         case 'GAUGE_CARD': return renderGauge(comp as GaugeCard);
         case 'ACTION_GUIDE': return renderActionGuide(comp as ActionGuideCard);
+        // @ts-ignore
         default: return `<!-- Unknown Component Type: ${comp.type} -->`;
     }
 }
@@ -33,6 +35,59 @@ function getColClass(span: number = 1): string {
         case 4: return 'col-span-4';
         default: return 'col-span-1';
     }
+}
+
+function renderPlotComposite(comp: PlotCompositeCard): string {
+    const { plotName, stage, tags, primaryMetric, heroChart, recentActivities } = comp.props;
+    
+    // Inline Chart Config
+    const configJson = JSON.stringify(heroChart.config);
+
+    return `
+    <div class="${getColClass(comp.colSpan)} bg-white/5 border border-white/10 rounded-2xl p-6 hover:border-white/20 transition-all backdrop-blur-xl group relative overflow-hidden">
+        <!-- HEADER ROW -->
+        <div class="flex justify-between items-start mb-6 relative z-10">
+            <div>
+                <h2 class="text-2xl font-bold text-white mb-1 uppercase tracking-widest leading-none">${plotName}</h2>
+                <div class="flex flex-wrap gap-2 mt-2">
+                    <span class="px-2 py-0.5 text-[10px] uppercase font-bold bg-emerald-500/10 text-emerald-400 rounded-sm border border-emerald-500/20 tracking-wider">
+                        ${stage}
+                    </span>
+                    ${tags.slice(0, 1).map(t => `<span class="px-2 py-0.5 text-[10px] uppercase font-bold bg-blue-500/10 text-blue-400 rounded-sm border border-blue-500/20 tracking-wider">${t}</span>`).join('')}
+                </div>
+            </div>
+            <div class="text-right">
+                <div class="text-3xl font-light text-white leading-none">${primaryMetric.value}</div>
+                <div class="text-[10px] text-white/40 uppercase tracking-widest mt-1">${primaryMetric.label}</div>
+            </div>
+        </div>
+
+        <!-- HERO CHART -->
+        <div class="chart-container h-48 w-full mb-6 relative z-10">
+            <canvas id="${comp.id}" class="component-chart" data-config='${configJson.replace(/'/g, "&apos;")}'></canvas>
+        </div>
+
+        <!-- FOOTER / ACTIVITY -->
+        <div class="relative z-10 border-t border-white/5 pt-4">
+             <div class="flex justify-between items-center mb-2">
+                <h4 class="text-[10px] font-bold text-white/30 uppercase tracking-widest">${heroChart.title}</h4>
+             </div>
+             ${(recentActivities && recentActivities.length > 0) ? `
+             <div class="space-y-2 mt-4">
+                ${recentActivities.map(act => `
+                    <div class="flex items-start gap-2 text-xs text-white/60">
+                        <span class="mt-1.5 w-1 h-1 rounded-full bg-emerald-500/50"></span>
+                        <span class="font-mono text-white/30">${new Date(act.date).toLocaleDateString('th-TH', {day:'2-digit', month:'2-digit'})}</span>
+                        <span class="truncate">${act.note}</span>
+                    </div>
+                `).join('')}
+             </div>` 
+             : `<div class="text-xs text-white/20 italic">No recent activity</div>`}
+        </div>
+
+        <!-- DECORATIVE BG -->
+        <div class="absolute -bottom-10 -right-10 w-40 h-40 bg-gradient-to-br from-emerald-500/5 to-blue-500/5 rounded-full blur-3xl pointer-events-none"></div>
+    </div>`;
 }
 
 function renderPlotHeader(comp: PlotHeaderCard): string {
@@ -91,6 +146,35 @@ function renderInsight(comp: InsightCard): string {
         <ul class="space-y-1">
             ${messages.map(m => `<li class="text-sm text-white/80 list-disc list-inside">${m}</li>`).join('')}
         </ul>
+    </div>`;
+}
+
+
+function renderTable(comp: TableCard): string {
+    const { title, headers, rows, variant } = comp.props;
+    const isColored = variant === 'colored-status';
+
+    return `
+    <div class="${getColClass(comp.colSpan)} p-0 bg-white/5 border border-white/10 rounded-2xl overflow-hidden backdrop-blur-sm mt-4">
+        <div class="px-6 py-4 border-b border-white/5 bg-white/5 flex justify-between items-center">
+            <h4 class="text-xs font-bold text-white/50 uppercase tracking-widest">${title}</h4>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left">
+                <thead class="text-xs text-white/40 uppercase bg-white/5">
+                    <tr>
+                        ${headers.map(h => `<th class="px-6 py-3 font-medium tracking-wider">${h}</th>`).join('')}
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-white/5">
+                    ${rows.map((row, i) => `
+                        <tr class="hover:bg-white/5 transition-colors">
+                            ${row.map(cell => `<td class="px-6 py-4 text-white/70 whitespace-nowrap font-mono text-xs">${cell}</td>`).join('')}
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
     </div>`;
 }
 

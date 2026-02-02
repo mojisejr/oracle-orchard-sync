@@ -21,7 +21,7 @@ interface GenerationContext {
 
 // --- PATTERN MATCHER ENGINE ---
 
-export function generateManifest(data: GenerationContext['system']): HeadlessManifest {
+export function generateManifest(data: GenerationContext['system'], filterPlotId?: string): HeadlessManifest {
     // 1. Analyze Global Context (Aggregated)
     const context = analyzeGlobalContext(data);
 
@@ -35,25 +35,30 @@ export function generateManifest(data: GenerationContext['system']): HeadlessMan
     const components: VisualComponent[] = [];
 
     // 3.1 Global Summary Card (Insight)
-    components.push({
-        type: 'INSIGHT_CARD',
-        id: 'global_summary',
-        colSpan: 4,
-        props: {
-            title: context.headline,
-            severity: context.isEmergency ? 'critical' : 'info',
-            messages: context.bulletPoints
-        }
-    });
+    if (!filterPlotId) {
+        components.push({
+            type: 'INSIGHT_CARD',
+            id: 'global_summary',
+            colSpan: 4,
+            props: {
+                title: context.headline,
+                severity: context.isEmergency ? 'critical' : 'info',
+                messages: context.bulletPoints
+            }
+        });
+    }
 
     // 3.2 Per-Plot Cards
     Object.values(data.plots).forEach(sitrep => {
+        // Apply focus filter if provided
+        if (filterPlotId && sitrep.plot.id !== filterPlotId) return;
+        
         const plotComponents = generatePlotComponents(sitrep, context.mode);
         components.push(...plotComponents);
     });
 
     return {
-        summary: context.headline,
+        summary: filterPlotId ? `Focus: ${filterPlotId.toUpperCase()}` : context.headline,
         theme,
         layout,
         visual_manifest: components,
@@ -127,167 +132,153 @@ function analyzeGlobalContext(data: GenerationContext['system']): GlobalAnalysis
 // --- LOGIC: PLOT COMPONENT FACTORY ---
 
 function generatePlotComponents(sitrep: SITREP, globalMode: GlobalAnalysis['mode']): VisualComponent[] {
-    const comps: VisualComponent[] = [];
     const profile = sitrep.plot.profile;
-    const profileNote = (profile.personality.notes || '').toLowerCase();
     const criticalAsset = (profile.personality.critical_asset || '').toLowerCase();
     const stage = (profile.stage || '').toLowerCase();
 
-    // 1. Plot Header
-    comps.push({
-        type: 'PLOT_HEADER',
-        id: `header_${sitrep.plot.id}`,
-        colSpan: 1, // Standard card width
-        props: {
-            plotName: sitrep.plot.id,
-            stage: profile.stage,
-            soilType: profile.soil,
-            tags: [criticalAsset]
-        }
-    });
-
-    // 2. Contextual Chart (The "Smart Logic" from Body)
-    // Local Override: specific plot sensitivity
+    // 2. Contextual Chart Logic (The "Smart Logic")
     let localMode = globalMode;
 
     if (criticalAsset === 'durian' || stage === 'bloom' || stage === 'pollination') {
-        localMode = 'vpd'; // Durable Rule: Durian always cares about VPD in bloom
+        localMode = 'vpd';
     } else if (profile.personality.sensitivity_flood > 7 || profile.soil.includes('clayey_filled')) {
-        localMode = 'rain'; // Durable Rule: Clay soil fears flood
+        localMode = 'rain';
     } else if (criticalAsset === 'seedling') {
         localMode = 'temp';
     }
 
-    // Generate Chart Data
+    // Chart Data Preparation
     const forecasts = sitrep.environment.forecast;
     const labels = forecasts.map(f => f.date.split('T')[0].slice(5)); // MM-DD
 
-    let chartCard: ChartCard;
+    let chartDataset: any[] = [];
+    let chartTitle = 'General Forecast';
+    let chartDesc = 'Monitoring conditions';
+    let chartType: 'line' | 'bar' | 'mixed' = 'line';
 
     if (localMode === 'vpd') {
-        chartCard = {
-            type: 'CHART',
-            id: `chart_${sitrep.plot.id}`,
-            colSpan: 1,
-            props: {
-                title: 'VPD & Stress Index',
-                chartType: 'line',
-                data: {
-                    labels,
-                    datasets: [{
-                        label: 'VPD (kPa)',
-                        data: forecasts.map(f => f.vpd),
-                        color: '#10b981', // Emerald
-                        fill: true
-                    }]
-                }
-            }
-        };
+        chartTitle = 'VPD & Stress Index';
+        chartDesc = 'Transpiration Monitor';
+        chartDataset = [{
+            label: 'VPD (kPa)',
+            data: forecasts.map(f => f.vpd),
+            color: '#10b981', // Emerald
+            fill: true
+        }];
     } else if (localMode === 'rain') {
-        chartCard = {
-            type: 'CHART',
-            id: `chart_${sitrep.plot.id}`,
-            colSpan: 1,
-            props: {
-                title: 'Precipitation & Flood Risk',
-                chartType: 'mixed',
-                data: {
-                    labels,
-                    datasets: [
-                        {
-                            label: 'Rain (mm)',
-                            data: forecasts.map(f => f.rainMm || 0),
-                            color: '#3b82f6', // Blue
-                            type: 'bar'
-                        },
-                        {
-                            label: 'ETo (mm)',
-                            data: forecasts.map(f => f.eto),
-                            color: '#f59e0b',
-                            type: 'line'
-                        }
-                    ]
-                }
+        chartTitle = 'Precipitation & Flood Risk';
+        chartDesc = 'Flood Watch';
+        chartType = 'mixed';
+        chartDataset = [
+            {
+                label: 'Rain (mm)',
+                data: forecasts.map(f => f.rainMm || 0),
+                color: '#3b82f6', // Blue
+                type: 'bar'
+            },
+            {
+                label: 'ETo (mm)',
+                data: forecasts.map(f => f.eto),
+                color: '#f59e0b',
+                type: 'line'
             }
-        };
+        ];
     } else if (localMode === 'temp') {
-        chartCard = {
-            type: 'CHART',
-            id: `chart_${sitrep.plot.id}`,
-            colSpan: 1,
-            props: {
-                title: 'Heat Stress (Max Temp)',
-                chartType: 'line',
-                data: {
-                    labels,
-                    datasets: [{
-                        label: 'Max Temp (°C)',
-                        data: forecasts.map(f => f.tempMax),
-                        color: '#ef4444',
-                        fill: true
-                    }]
-                }
-            }
-        };
+        chartTitle = 'Heat Stress (Max Temp)';
+        chartDesc = 'Heat Watch';
+        chartDataset = [{
+            label: 'Max Temp (°C)',
+            data: forecasts.map(f => f.tempMax),
+            color: '#ef4444',
+            fill: true
+        }];
     } else {
-        // Default
-        chartCard = {
-            type: 'CHART',
-            id: `chart_${sitrep.plot.id}`,
-            colSpan: 1,
-            props: {
-                title: 'General Forecast',
-                chartType: 'mixed',
-                data: {
-                    labels,
-                    datasets: [
-                        {
-                            label: 'Max Temp',
-                            data: forecasts.map(f => f.tempMax),
-                            color: '#6366f1',
-                            type: 'line'
-                        },
-                        {
-                            label: 'Rain %',
-                            data: forecasts.map(f => f.rainProb),
-                            color: '#3b82f6',
-                            type: 'bar'
-                        }
-                    ]
-                }
+        chartType = 'mixed';
+        chartDataset = [
+            {
+                label: 'Max Temp',
+                data: forecasts.map(f => f.tempMax),
+                color: '#6366f1',
+                type: 'line'
+            },
+            {
+                label: 'Rain %',
+                data: forecasts.map(f => f.rainProb),
+                color: '#3b82f6',
+                type: 'bar'
             }
-        };
+        ];
     }
 
-    comps.push(chartCard);
-
-    // 3. Metric Card (GDD or Rain Sum)
+    // Determine Metric
+    let metricVal = 0;
+    let metricLabel = 'Daily GDD';
+    
     if (localMode === 'rain') {
-        const totalRain = forecasts.reduce((sum, f) => sum + (f.rainMm || 0), 0);
-        comps.push({
-            type: 'METRIC_CARD',
-            id: `metric_${sitrep.plot.id}`,
-            colSpan: 1,
-            props: {
-                label: '3-Day Rain',
-                value: totalRain.toFixed(1),
-                unit: 'mm',
-                status: totalRain > 30 ? 'warning' : 'normal'
-            }
-        });
+        metricVal = forecasts.reduce((sum, f) => sum + (f.rainMm || 0), 0);
+        metricLabel = 'Rain (3d)';
     } else {
-        const gdd = sitrep.environment.current.gdd || 0;
-        comps.push({
-            type: 'METRIC_CARD',
-            id: `metric_${sitrep.plot.id}`,
-            colSpan: 1,
+        metricVal = sitrep.environment.current.gdd || 0;
+    }
+
+
+    // Return SINGLE COMPOSITE CARD
+    const result: VisualComponent[] = [{
+        type: 'PLOT_COMPOSITE',
+        id: `plot_${sitrep.plot.id}`,
+        colSpan: 1,
+        props: {
+            plotName: sitrep.plot.id,
+            stage: profile.stage,
+            tags: [criticalAsset, profile.soil],
+            primaryMetric: {
+                label: metricLabel,
+                value: metricVal.toFixed(1)
+            },
+            heroChart: {
+                title: chartTitle,
+                desc: chartDesc,
+                config: {
+                    chartType,
+                    data: {
+                        labels,
+                        datasets: chartDataset
+                    }
+                }
+            },
+            recentActivities: sitrep.activities.recent.slice(0, 2).map(a => ({
+                date: a.date,
+                note: a.notes
+            }))
+        }
+    }];
+
+    // 🔬 DYNAMIC INJECTION: Activity Table for requested plot (Focus)
+    if (sitrep.plot.id === 'suan_makham') {
+        const activityRows = sitrep.activities.recent.slice(0, 10).map(a => {
+            const dateStr = new Date(a.date).toLocaleDateString('th-TH', { 
+                day: '2-digit', 
+                month: '2-digit',
+                year: '2-digit'
+            });
+            return [dateStr, a.type.toUpperCase(), a.notes || '-'];
+        });
+
+        result.push({
+            type: 'TABLE_CARD',
+            id: `activity_table_${sitrep.plot.id}`,
+            colSpan: 4, // Full width for visibility
             props: {
-                label: 'Daily GDD',
-                value: gdd.toFixed(1),
-                status: 'normal'
+                title: `📅 Activity History: ${sitrep.plot.id.toUpperCase()}`,
+                variant: 'simple',
+                headers: ['Date', 'Type', 'Notes'],
+                rows: activityRows
             }
         });
     }
 
-    return comps;
+    return result;
 }
+
+
+

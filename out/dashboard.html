@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Orchard Sight | Bio-Dashboard</title>
+    <title>Orchard Sight | Headless Monitor</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -23,273 +23,108 @@
                 <h1 class="text-4xl font-bold mb-2 tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">
                     ORCHARD SIGHT
                 </h1>
-                <p class="text-white/40 text-sm">System Time: 1/31/2026, 11:20:19 PM</p>
+                <p class="text-white/40 text-sm">Target: AI Dashboard: VPD & Spray Guide | Latency: 12ms</p>
             </div>
             <div class="text-right">
-                <div class="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-400 text-xs font-bold uppercase tracking-widest animate-pulse">
-                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-                    Live Connection
+                <div class="inline-flex items-center gap-2 px-3 py-1 border-emerald-500/20 bg-emerald-500/10 rounded-full text-emerald-400 text-xs font-bold uppercase tracking-widest animate-pulse">
+                    <span class="w-2 h-2 rounded-full bg-current"></span>
+                    System Online (AI-Driven-v1)
                 </div>
             </div>
         </header>
 
         <!-- DASHBOARD GRID -->
-        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
             
-        <div class="col-span-1 bg-white/5 border border-white/10 rounded-2xl p-6 hover:border-white/20 transition-all backdrop-blur-xl">
-            <div class="flex justify-between items-start mb-4">
-                <div>
-                    <h2 class="text-2xl font-bold text-white mb-1 uppercase tracking-widest">suan_ban</h2>
-                    <div class="flex gap-2 text-xs">
-                        <span class="px-2 py-1 bg-emerald-500/20 text-emerald-300 rounded-full border border-emerald-500/30">
-                            bloom
-                        </span>
-                        <span class="px-2 py-1 bg-blue-500/20 text-blue-300 rounded-full border border-blue-500/30">
-                            loamy_sandy
-                        </span>
-                    </div>
-                </div>
-                <div class="text-right">
-                    <div class="text-3xl font-light text-white">13.6</div>
-                    <div class="text-xs text-white/40 uppercase tracking-widest">Daily GDD</div>
+    <div class="col-span-4 p-4 rounded-xl border bg-blue-500/10 border-blue-500/20">
+        <h3 class="font-bold text-blue-200 mb-2 flex items-center gap-2">
+            ℹ️ 💡 คำแนะนำการพ่นยา (7 วันข้างหน้า)
+        </h3>
+        <ul class="space-y-1">
+            <li class="text-sm text-white/80 list-disc list-inside">✅ ช่วงที่ดีที่สุด: 5-7 ก.พ. (VPD < 1.0) อากาศชื้นขึ้น ยาดูดซึมได้ดี ไม่ระเหยเร็ว</li><li class="text-sm text-white/80 list-disc list-inside">❌ เลี่ยงช่วง: 2-4 ก.พ. (VPD สูง 1.3-1.4) เสี่ยงใบไหม้ (Phytotoxicity) จากอากาศแห้งจัด</li><li class="text-sm text-white/80 list-disc list-inside">⚠️ ระวัง: 8 ก.พ. มีพยากรณ์ฝน 10.5mm อาจชะล้างยาที่พ่นไปได้</li>
+        </ul>
+    </div>
+
+    <div class="col-span-2 bg-white/5 border border-white/10 rounded-2xl p-6 hover:border-white/20 transition-all backdrop-blur-xl group relative overflow-hidden">
+        <!-- HEADER ROW -->
+        <div class="flex justify-between items-start mb-6 relative z-10">
+            <div>
+                <h2 class="text-2xl font-bold text-white mb-1 uppercase tracking-widest leading-none">สวนมะขาม (Durian Focus)</h2>
+                <div class="flex flex-wrap gap-2 mt-2">
+                    <span class="px-2 py-0.5 text-[10px] uppercase font-bold bg-emerald-500/10 text-emerald-400 rounded-sm border border-emerald-500/20 tracking-wider">
+                        Bloom/Pollination
+                    </span>
+                    <span class="px-2 py-0.5 text-[10px] uppercase font-bold bg-blue-500/10 text-blue-400 rounded-sm border border-blue-500/20 tracking-wider">VPD Stress Monitor</span>
                 </div>
             </div>
-
-            <!-- DYNAMIC CHART -->
-            <div class="chart-container h-48 w-full mb-6">
-                <canvas id="chart-suan_ban"></canvas>
+            <div class="text-right">
+                <div class="text-3xl font-light text-white leading-none">1.42</div>
+                <div class="text-[10px] text-white/40 uppercase tracking-widest mt-1">Max VPD (3d)</div>
             </div>
-
-            <!-- CONTEXT & RECENT ACTIVITY -->
-            <div class="space-y-4">
-                <div>
-                    <h4 class="text-xs font-bold text-white/40 uppercase mb-2 tracking-widest">Situation Report</h4>
-                    <p class="text-sm text-white/80 leading-relaxed line-clamp-2">Critical Monitoring: หน้าร้าน/จุดรับแขก ห้ามโทรมเด็ดขาด (Nursery Zone) ...</p>
-                </div>
-
-                
-                <div>
-                    <h4 class="text-xs font-bold text-white/40 uppercase mb-2 tracking-widest">Recent Ops</h4>
-                    <div class="space-y-2">
-                        
-                        <div class="flex items-center gap-3 text-sm text-white/60">
-                            <span class="w-2 h-2 rounded-full bg-white/20"></span>
-                            <span class="font-mono text-emerald-400">31 ม.ค.</span>
-                            <span class="truncate"></span>
-                        </div>
-                        
-                        <div class="flex items-center gap-3 text-sm text-white/60">
-                            <span class="w-2 h-2 rounded-full bg-white/20"></span>
-                            <span class="font-mono text-emerald-400">29 ม.ค.</span>
-                            <span class="truncate">ให้น้ำ + แปลงพันธุ์ไม้</span>
-                        </div>
-                        
-                    </div>
-                </div>
-                
-            </div>
-            
-            <!-- Hidden Data Payload for Chart.js -->
-            <script>
-                window.chartData = window.chartData || {};
-                window.chartData['suan_ban'] = {"type":"line","data":{"labels":["01-31","02-01","02-02","02-03"],"datasets":[{"label":"VPD (kPa)","data":[0.64,1.29,1.15,1.23],"borderColor":"#10b981","backgroundColor":"rgba(16, 185, 129, 0.1)","fill":true,"tension":0.4,"borderWidth":3,"pointRadius":4}]}};
-            </script>
         </div>
-        
 
-        <div class="col-span-1 bg-white/5 border border-white/10 rounded-2xl p-6 hover:border-white/20 transition-all backdrop-blur-xl">
-            <div class="flex justify-between items-start mb-4">
-                <div>
-                    <h2 class="text-2xl font-bold text-white mb-1 uppercase tracking-widest">suan_lang</h2>
-                    <div class="flex gap-2 text-xs">
-                        <span class="px-2 py-1 bg-emerald-500/20 text-emerald-300 rounded-full border border-emerald-500/30">
-                            bloom
-                        </span>
-                        <span class="px-2 py-1 bg-blue-500/20 text-blue-300 rounded-full border border-blue-500/30">
-                            clayey_filled
-                        </span>
-                    </div>
-                </div>
-                <div class="text-right">
-                    <div class="text-3xl font-light text-white">15.1</div>
-                    <div class="text-xs text-white/40 uppercase tracking-widest">Daily GDD</div>
-                </div>
-            </div>
-
-            <!-- DYNAMIC CHART -->
-            <div class="chart-container h-48 w-full mb-6">
-                <canvas id="chart-suan_lang"></canvas>
-            </div>
-
-            <!-- CONTEXT & RECENT ACTIVITY -->
-            <div class="space-y-4">
-                <div>
-                    <h4 class="text-xs font-bold text-white/40 uppercase mb-2 tracking-widest">Situation Report</h4>
-                    <p class="text-sm text-white/80 leading-relaxed line-clamp-2">Critical Monitoring: ปราการด่านสุดท้าย (The Fortress). ถึกทน แต่ระวังน้...</p>
-                </div>
-
-                
-                <div>
-                    <h4 class="text-xs font-bold text-white/40 uppercase mb-2 tracking-widest">Recent Ops</h4>
-                    <div class="space-y-2">
-                        
-                        <div class="flex items-center gap-3 text-sm text-white/60">
-                            <span class="w-2 h-2 rounded-full bg-white/20"></span>
-                            <span class="font-mono text-emerald-400">31 ม.ค.</span>
-                            <span class="truncate"></span>
-                        </div>
-                        
-                        <div class="flex items-center gap-3 text-sm text-white/60">
-                            <span class="w-2 h-2 rounded-full bg-white/20"></span>
-                            <span class="font-mono text-emerald-400">29 ม.ค.</span>
-                            <span class="truncate">ให้น้ำ</span>
-                        </div>
-                        
-                    </div>
-                </div>
-                
-            </div>
-            
-            <!-- Hidden Data Payload for Chart.js -->
-            <script>
-                window.chartData = window.chartData || {};
-                window.chartData['suan_lang'] = {"type":"line","data":{"labels":["01-31","02-01","02-02","02-03"],"datasets":[{"label":"VPD (kPa)","data":[0.79,1.52,1.42,1.42],"borderColor":"#10b981","backgroundColor":"rgba(16, 185, 129, 0.1)","fill":true,"tension":0.4,"borderWidth":3,"pointRadius":4}]}};
-            </script>
+        <!-- HERO CHART -->
+        <div class="chart-container h-48 w-full mb-6 relative z-10">
+            <canvas id="vpd_makham" class="component-chart" data-config='{"chartType":"line","data":{"labels":["02/02","02/03","02/04","02/05","02/06","02/07","02/08"],"datasets":[{"label":"VPD (kPa)","data":[1.27,1.29,1.42,0.82,0.79,0.42,0.34],"color":"#10b981","fill":true}]}}'></canvas>
         </div>
-        
 
-        <div class="col-span-1 bg-white/5 border border-white/10 rounded-2xl p-6 hover:border-white/20 transition-all backdrop-blur-xl">
-            <div class="flex justify-between items-start mb-4">
-                <div>
-                    <h2 class="text-2xl font-bold text-white mb-1 uppercase tracking-widest">suan_makham</h2>
-                    <div class="flex gap-2 text-xs">
-                        <span class="px-2 py-1 bg-emerald-500/20 text-emerald-300 rounded-full border border-emerald-500/30">
-                            bloom
-                        </span>
-                        <span class="px-2 py-1 bg-blue-500/20 text-blue-300 rounded-full border border-blue-500/30">
-                            sandy
-                        </span>
-                    </div>
-                </div>
-                <div class="text-right">
-                    <div class="text-3xl font-light text-white">14.1</div>
-                    <div class="text-xs text-white/40 uppercase tracking-widest">Daily GDD</div>
-                </div>
-            </div>
-
-            <!-- DYNAMIC CHART -->
-            <div class="chart-container h-48 w-full mb-6">
-                <canvas id="chart-suan_makham"></canvas>
-            </div>
-
-            <!-- CONTEXT & RECENT ACTIVITY -->
-            <div class="space-y-4">
-                <div>
-                    <h4 class="text-xs font-bold text-white/40 uppercase mb-2 tracking-widest">Situation Report</h4>
-                    <p class="text-sm text-white/80 leading-relaxed line-clamp-2">Critical Monitoring: ปัดดอก (Hand Pollination) เมื่อ 2026-01-30. นับไปอ...</p>
-                </div>
-
+        <!-- FOOTER / ACTIVITY -->
+        <div class="relative z-10 border-t border-white/5 pt-4">
+             <div class="flex justify-between items-center mb-2">
+                <h4 class="text-[10px] font-bold text-white/30 uppercase tracking-widest">7-Day VPD Trend</h4>
+             </div>
+             
+             <div class="space-y-2 mt-4">
                 
-                <div>
-                    <h4 class="text-xs font-bold text-white/40 uppercase mb-2 tracking-widest">Recent Ops</h4>
-                    <div class="space-y-2">
-                        
-                        <div class="flex items-center gap-3 text-sm text-white/60">
-                            <span class="w-2 h-2 rounded-full bg-white/20"></span>
-                            <span class="font-mono text-emerald-400">31 ม.ค.</span>
-                            <span class="truncate">ยังไม่ทราบกำหนดวัน: ต้องตัดหญ้าที่สวนมะขาม</span>
-                        </div>
-                        
-                        <div class="flex items-center gap-3 text-sm text-white/60">
-                            <span class="w-2 h-2 rounded-full bg-white/20"></span>
-                            <span class="font-mono text-emerald-400">30 ม.ค.</span>
-                            <span class="truncate">ปัดดอกมะขามวันนี้ (Hand Pollination) กำหนดแก่ในอีก 110 วัน (2026-05-20)</span>
-                        </div>
-                        
+                    <div class="flex items-start gap-2 text-xs text-white/60">
+                        <span class="mt-1.5 w-1 h-1 rounded-full bg-emerald-500/50"></span>
+                        <span class="font-mono text-white/30">02/02</span>
+                        <span class="truncate">ให้น้ำ 40 นาที</span>
                     </div>
-                </div>
                 
-            </div>
-            
-            <!-- Hidden Data Payload for Chart.js -->
-            <script>
-                window.chartData = window.chartData || {};
-                window.chartData['suan_makham'] = {"type":"line","data":{"labels":["01-31","02-01","02-02","02-03"],"datasets":[{"label":"VPD (kPa)","data":[0.79,1.39,1.27,1.29],"borderColor":"#10b981","backgroundColor":"rgba(16, 185, 129, 0.1)","fill":true,"tension":0.4,"borderWidth":3,"pointRadius":4}]}};
-            </script>
+             </div>
         </div>
-        
 
-        <div class="col-span-1 bg-white/5 border border-white/10 rounded-2xl p-6 hover:border-white/20 transition-all backdrop-blur-xl">
-            <div class="flex justify-between items-start mb-4">
-                <div>
-                    <h2 class="text-2xl font-bold text-white mb-1 uppercase tracking-widest">plant_shop</h2>
-                    <div class="flex gap-2 text-xs">
-                        <span class="px-2 py-1 bg-emerald-500/20 text-emerald-300 rounded-full border border-emerald-500/30">
-                            seedling
-                        </span>
-                        <span class="px-2 py-1 bg-blue-500/20 text-blue-300 rounded-full border border-blue-500/30">
-                            loamy_sandy
-                        </span>
-                    </div>
-                </div>
-                <div class="text-right">
-                    <div class="text-3xl font-light text-white">13.6</div>
-                    <div class="text-xs text-white/40 uppercase tracking-widest">Daily GDD</div>
-                </div>
-            </div>
+        <!-- DECORATIVE BG -->
+        <div class="absolute -bottom-10 -right-10 w-40 h-40 bg-gradient-to-br from-emerald-500/5 to-blue-500/5 rounded-full blur-3xl pointer-events-none"></div>
+    </div>
 
-            <!-- DYNAMIC CHART -->
-            <div class="chart-container h-48 w-full mb-6">
-                <canvas id="chart-plant_shop"></canvas>
-            </div>
-
-            <!-- CONTEXT & RECENT ACTIVITY -->
-            <div class="space-y-4">
-                <div>
-                    <h4 class="text-xs font-bold text-white/40 uppercase mb-2 tracking-widest">Situation Report</h4>
-                    <p class="text-sm text-white/80 leading-relaxed line-clamp-2">Seedling Sensitivity Tracking</p>
-                </div>
-
-                
-                <div>
-                    <h4 class="text-xs font-bold text-white/40 uppercase mb-2 tracking-widest">Recent Ops</h4>
-                    <div class="space-y-2">
-                        
-                        <div class="flex items-center gap-3 text-sm text-white/60">
-                            <span class="w-2 h-2 rounded-full bg-white/20"></span>
-                            <span class="font-mono text-emerald-400">25 ม.ค.</span>
-                            <span class="truncate">ขนหมอนทองขายให้ร้านนับหนึ่งพันธุ์ไม้ 300 ต้น (ลดราคา 35 -> 32 บาท เนื่องจากลูกค้า feedback ว่าต้นไม้ไม่สวย) คราวหน้าต้องปรับปรุงเรื่องการคัดคุณภาพ</span>
-                        </div>
-                        
-                        <div class="flex items-center gap-3 text-sm text-white/60">
-                            <span class="w-2 h-2 rounded-full bg-white/20"></span>
-                            <span class="font-mono text-emerald-400">24 ม.ค.</span>
-                            <span class="truncate">มีคนมาขนลองกอง 500 ต้น (ต้นละ 30 บาท). อากาศวันนี้แห้ง (39% RH) และลมแรง, แนะนำให้พรมน้ำแปลงที่เหลือเพื่อลดการคายน้ำจากการขยับต้นไม้ออก</span>
-                        </div>
-                        
-                    </div>
-                </div>
-                
-            </div>
-            
-            <!-- Hidden Data Payload for Chart.js -->
-            <script>
-                window.chartData = window.chartData || {};
-                window.chartData['plant_shop'] = {"type":"line","data":{"labels":["01-31","02-01","02-02","02-03"],"datasets":[{"label":"Max Temp (°C)","data":[28.09,30.01,29.71,30],"borderColor":"#ef4444","backgroundColor":"rgba(239, 68, 68, 0.1)","fill":true}]}};
-            </script>
+    <div class="col-span-2 p-6 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-sm relative group">
+        <h4 class="text-xs font-bold text-white/40 uppercase mb-4 tracking-widest">ความเสี่ยงฝนชะล้าง</h4>
+        <div class="h-64 w-full">
+            <canvas id="rain_risk" class="component-chart" data-config='{"title":"ความเสี่ยงฝนชะล้าง","chartType":"bar","data":{"labels":["02/02","02/03","02/04","02/05","02/06","02/07","02/08"],"datasets":[{"label":"Rainfall (mm)","data":[0,0,0,0,1.2,1.1,10.5],"color":"#3b82f6"}]}}'></canvas>
         </div>
-        
+    </div>
         </div>
     </div>
 
     <script>
-        // Init Charts
+        // Init Charts (Dumb Client-Side Hydration)
         document.addEventListener('DOMContentLoaded', () => {
-            Object.keys(window.chartData).forEach(slug => {
-                const ctx = document.getElementById('chart-' + slug);
-                if (ctx) {
-                    new Chart(ctx, {
-                        ...window.chartData[slug],
+            const canvases = document.querySelectorAll('canvas.component-chart');
+            canvases.forEach(canvas => {
+                const configStr = canvas.getAttribute('data-config');
+                if (!configStr) return;
+                
+                try {
+                    const props = JSON.parse(configStr);
+                    // Map Props to Chart.js Config
+                    new Chart(canvas, {
+                        type: props.chartType === 'mixed' ? 'bar' : props.chartType, 
+                        data: {
+                            labels: props.data.labels,
+                            datasets: props.data.datasets.map(ds => ({
+                                label: ds.label,
+                                data: ds.data,
+                                borderColor: ds.color || '#ffffff',
+                                backgroundColor: ds.color ? ds.color + '40' : '#ffffff20',
+                                borderWidth: 2,
+                                tension: 0.4,
+                                type: ds.type || undefined,
+                                yAxisID: ds.yAxisID || 'y',
+                                fill: ds.fill
+                            }))
+                        },
                         options: {
                             responsive: true,
                             maintainAspectRatio: false,
@@ -302,10 +137,11 @@
                             }
                         }
                     });
+                } catch (e) {
+                    console.error('Chart hydration failed', e);
                 }
             });
         });
     </script>
 </body>
 </html>
-    

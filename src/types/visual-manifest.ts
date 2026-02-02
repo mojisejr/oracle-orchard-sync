@@ -31,6 +31,7 @@ export interface HeadlessManifest {
 // --- 2. THE COMPONENT UNION ---
 
 export type VisualComponent = 
+    | PlotCompositeCard // NEW: The Hero Card
     | MetricCard 
     | GaugeCard 
     | ChartCard 
@@ -42,6 +43,37 @@ export type VisualComponent =
 export type ComponentType = VisualComponent['type'];
 
 // --- 3. COMPONENT DEFINITIONS ---
+
+/**
+ * COMPOSITE: The "All-in-One" Plot Card (Hero View)
+ */
+export interface PlotCompositeCard extends BaseComponent {
+    type: 'PLOT_COMPOSITE';
+    props: {
+        // Identity
+        plotName: string;
+        stage: string;
+        tags: string[];
+        
+        // Primary Metric (Top Right)
+        primaryMetric: {
+            label: string;
+            value: string | number;
+            unit?: string;
+        };
+        
+        // Chart Context
+        heroChart: {
+            config: any; // Chart.js config data
+            title: string;
+            desc: string;
+        };
+
+        // Activities
+        recentActivities?: { date: string; note: string }[];
+    };
+}
+
 
 /**
  * Base Props for all components
